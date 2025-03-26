@@ -1,0 +1,94 @@
+// Roberto Ramirez
+// Andrew Sutton
+// Daniel Vasquez
+// Jeremy Veloso
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <arpa/inet.h>
+#include <time.h>
+#include <fcntl.h>
+
+
+int logs;
+
+int main() {
+  const char* ip_address = "127.0.0.1";
+  int port = 8080;
+  int socket_fd;
+  int client_fd;
+  char buffer[1024];
+  struct sockaddr_in server_address;
+  struct sockaddr_storage client_address;
+  socklen_t client_address_len = sizeof(client_address);
+  ssize_t bytes_read;
+  int result;
+
+  logs = open("logs.txt", O_RDWR | O_CREAT | O_APPEND, 0777);
+
+  if (logs == -1) {
+    perror("Error in opening the logs file");
+    exit(EXIT_FAILURE);
+  }
+
+  write_to_logs("Testing 2");
+
+  // First step create a socket
+  socket_fd = socket(AF_INET, SOCK_STREAM, 0);
+  
+  if (socket_fd < 0) {
+    perror("Socket Error");
+    exit(EXIT_FAILURE);
+  }
+
+  // Create the adress struct
+  memset(&server_address, 0, sizeof(server_address)); // Set's everything in the struct to 0
+  server_address.sin_family = AF_INET;
+  server_address.sin_addr.s_addr = inet_addr(ip_address);
+  server_address.sin_port = htons(port);
+
+  // Binding to IP adress
+  result = bind(socket_fd, (struct sockaddr*)&server_address, sizeof(server_address));
+  
+  result = listen(socket_fd, 5);
+
+  if (result < 0) {
+    perror("Bind error");
+    close(socket_fd);
+    exit(EXIT_FAILURE);
+  }
+
+  printf("Wait for connection...\n");
+
+  client_fd = accept(socket_fd, (struct sockaddr*)&client_address, sizeof(client_address_len));
+  
+  if (client_fd < 0) {
+    perror("Accept Error");
+    close(socket_fd);
+    exit(EXIT_FAILURE);
+  }
+
+  printf("Connection established... \n");
+
+  while (bytes_read = recv(client_fd, buffer, sizeof(buffer) - 1, 0) > 0 ){
+    buffer[bytes_read] = "\0";
+    printf("Received Data: %s", buffer);
+  }
+
+  printf("Socket bound to %s: %d\n", ip_address, port);
+  
+  close(logs);
+  close(socket_fd);
+  close(client_fd);
+
+
+  return 0;
+}
+
+
+int write_to_logs(char* message) {
+  write(logs, message, strlen(message));
+  return 0;
+}
