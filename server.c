@@ -29,7 +29,7 @@ int main() {
   // First step create a socket
   socket_fd = socket(AF_INET, SOCK_STREAM, 0);
   if (socket_fd < 0) {
-    perror("Socket Error");
+    logError("Socket Error");
     exit(EXIT_FAILURE);
   }
 
@@ -45,17 +45,16 @@ int main() {
   result = listen(socket_fd, 5);
 
   if (result < 0) {
-    perror("Bind error");
+    logError("Bind error");
     close(socket_fd);
     exit(EXIT_FAILURE);
   }
 
   logServer("Wait for connection...\n");
-
   client_fd = accept(socket_fd, (struct sockaddr*)&client_address, sizeof(client_address_len));
   
   if (client_fd < 0) {
-    perror("Accept Error");
+    logError("Accept Error");
     close(socket_fd);
     exit(EXIT_FAILURE);
   }

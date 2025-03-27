@@ -75,3 +75,14 @@ int logServer(char* buff){
 	logUser(buff, "Server");
 	return 0;
 }
+
+//Writes error to log as well as perror
+int logError(char* buff){
+	int oldVerbose = verbosemode;
+	verbosemode = 0;
+	perror(buff);
+	logServer(buff);
+	writeToLog("\n");
+	verbosemode = oldVerbose;
+	return 0;
+}

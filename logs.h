@@ -16,5 +16,6 @@ int writeToLog(char* buff);
 int logSysTime(void);
 int logUser(char* buff, char* user);
 int logServer(char* buff);
+int logError(char* buff);
 
 #endif
