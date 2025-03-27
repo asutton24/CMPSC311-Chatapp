@@ -18,7 +18,7 @@ int main() {
   int socket_fd;
   int client_fd;
   char buffer[1024];
-  char format_buffer[512];
+  char format_buffer[2048];
   struct sockaddr_in server_address;
   struct sockaddr_storage client_address;
   socklen_t client_address_len = sizeof(client_address);
@@ -60,14 +60,16 @@ int main() {
     exit(EXIT_FAILURE);
   }
 
-  logServer("Connection established... \n");
+  logServer("Connection established...\n");
 
   while (bytes_read = recv(client_fd, buffer, sizeof(buffer) - 1, 0) > 0 ){
-    buffer[bytes_read] = "\0";
-    printf("Received Data: %s", buffer);
+    buffer[bytes_read] = '\0';
+    sprintf(format_buffer, "Received Data: %s", buffer);
+    logServer(format_buffer);
   }
 
-  printf("Socket bound to %s: %d\n", ip_address, port);
+  sprintf(format_buffer, "Socket bound to %s: %d\n", ip_address, port);
+  logServer(format_buffer);
   close(socket_fd);
   close(client_fd);
 
