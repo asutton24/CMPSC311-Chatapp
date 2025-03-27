@@ -1,13 +1,19 @@
-#include <time.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <stdio.h>
-#include <string.h>
+#include "logs.h"
 
 //Just tracks the file id of the log file
 int logfd = 0;
 //Verbose mode setting
 int verbosemode = 0;
+
+int turnOnVerbose(){
+	verbosemode = 1;
+	return 0;
+}
+
+int turnOffVerbose(){
+	verbosemode = 0;
+	return 0;
+}
 
 //Default server.log
 int openLogFile(){
@@ -55,7 +61,7 @@ int logSysTime(){
 }
 
 //Log a timestamped message from a given user
-int loguser(char* buff, char* user){
+int logUser(char* buff, char* user){
 	logSysTime();
 	writeToLog(" ");
 	writeToLog(user);
@@ -65,14 +71,18 @@ int loguser(char* buff, char* user){
 }
 
 //Logs a message from user "Server"
-int logserver(char* buff){
-	loguser(buff, "Server");
+int logServer(char* buff){
+	logUser(buff, "Server");
 	return 0;
 }
 
-int main(){
-	openLogFileTS();
-	logserver("Hello World\n");
-	closeLogFile();
+//Writes error to log as well as perror
+int logError(char* buff){
+	int oldVerbose = verbosemode;
+	verbosemode = 0;
+	perror(buff);
+	logServer(buff);
+	writeToLog("\n");
+	verbosemode = oldVerbose;
 	return 0;
 }
