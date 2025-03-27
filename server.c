@@ -10,9 +10,7 @@
 #include <arpa/inet.h>
 #include <time.h>
 #include <fcntl.h>
-
-
-int logs;
+#include "logs.h"
 
 int main() {
   const char* ip_address = "127.0.0.1";
@@ -20,24 +18,16 @@ int main() {
   int socket_fd;
   int client_fd;
   char buffer[1024];
+  char format_buffer[512];
   struct sockaddr_in server_address;
   struct sockaddr_storage client_address;
   socklen_t client_address_len = sizeof(client_address);
   ssize_t bytes_read;
   int result;
 
-  logs = open("logs.txt", O_RDWR | O_CREAT | O_APPEND, 0777);
-
-  if (logs == -1) {
-    perror("Error in opening the logs file");
-    exit(EXIT_FAILURE);
-  }
-
-  write_to_logs("Testing 2");
-
+  openLogFileTS();
   // First step create a socket
   socket_fd = socket(AF_INET, SOCK_STREAM, 0);
-  
   if (socket_fd < 0) {
     perror("Socket Error");
     exit(EXIT_FAILURE);
@@ -60,7 +50,7 @@ int main() {
     exit(EXIT_FAILURE);
   }
 
-  printf("Wait for connection...\n");
+  logServer("Wait for connection...\n");
 
   client_fd = accept(socket_fd, (struct sockaddr*)&client_address, sizeof(client_address_len));
   
@@ -70,7 +60,7 @@ int main() {
     exit(EXIT_FAILURE);
   }
 
-  printf("Connection established... \n");
+  logServer("Connection established... \n");
 
   while (bytes_read = recv(client_fd, buffer, sizeof(buffer) - 1, 0) > 0 ){
     buffer[bytes_read] = "\0";
@@ -78,17 +68,11 @@ int main() {
   }
 
   printf("Socket bound to %s: %d\n", ip_address, port);
-  
-  close(logs);
   close(socket_fd);
   close(client_fd);
 
-
+  closeLogFile();
   return 0;
 }
 
 
-int write_to_logs(char* message) {
-  write(logs, message, strlen(message));
-  return 0;
-}
