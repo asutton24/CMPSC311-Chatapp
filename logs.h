@@ -7,6 +7,8 @@
 #include <stdio.h>
 #include <string.h>
 
+int turnOnVerbose(void);
+int turnOffVerbose(void);
 int openLogFile(void);
 int openLogFileTS(void);
 int closeLogFile(void);
