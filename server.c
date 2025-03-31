@@ -33,16 +33,14 @@ int main() {
     exit(EXIT_FAILURE);
   }
 
-  // Create the adress struct
+  // Create the address struct
   memset(&server_address, 0, sizeof(server_address)); // Set's everything in the struct to 0
   server_address.sin_family = AF_INET;
   server_address.sin_addr.s_addr = inet_addr(ip_address);
   server_address.sin_port = htons(port);
 
-  // Binding to IP adress
+  // Binding to IP address
   result = bind(socket_fd, (struct sockaddr*)&server_address, sizeof(server_address));
-  
-  result = listen(socket_fd, 5);
 
   if (result < 0) {
     logError("Bind error");
@@ -50,8 +48,16 @@ int main() {
     exit(EXIT_FAILURE);
   }
 
+  result = listen(socket_fd, 5);
+
+  if (result == -1) {
+    logError("Listen");
+    close(socket_fd);
+    exit(EXIT_FAILURE);
+  }
+
   logServer("Wait for connection...\n");
-  client_fd = accept(socket_fd, (struct sockaddr*)&client_address, sizeof(client_address_len));
+  client_fd = accept(socket_fd, (struct sockaddr*)&client_address, &client_address_len);
   
   if (client_fd < 0) {
     logError("Accept Error");
@@ -61,7 +67,7 @@ int main() {
 
   logServer("Connection established...\n");
 
-  while (bytes_read = recv(client_fd, buffer, sizeof(buffer) - 1, 0) > 0 ){
+  while ((bytes_read = recv(client_fd, buffer, sizeof(buffer) - 1, 0)) > 0 ){
     buffer[bytes_read] = '\0';
     sprintf(format_buffer, "Received Data: %s", buffer);
     logServer(format_buffer);
