@@ -11,8 +11,9 @@
 #include <time.h>
 #include <fcntl.h>
 #include "logs.h"
+#include "flags.h"
 
-int main() {
+int main(int argc, char** argv) {
   const char* ip_address = "127.0.0.1";
   int port = 8080;
   int socket_fd;
@@ -24,8 +25,8 @@ int main() {
   socklen_t client_address_len = sizeof(client_address);
   ssize_t bytes_read;
   int result;
-
   openLogFileTS();
+  handleFlags(argc, argv);
   // First step create a socket
   socket_fd = socket(AF_INET, SOCK_STREAM, 0);
   if (socket_fd < 0) {
