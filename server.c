@@ -18,6 +18,7 @@
 
 int client_socket[MAX_CLIENT] = {0};
 pthread_mutex_t client_lock = PTHREAD_MUTEX_INITIALIZER;
+int client_count = 0;
 
 typedef struct
 {
@@ -27,18 +28,53 @@ typedef struct
   pthread_mutex_t *client_lock;
 } client_info_t;
 
+void *handle_client(void* arg)
+{
+  int client_fd = *(int *)arg;
+  char buffer[1024];
+  char format_buffer[2048];
+  ssize_t bytes_read;
+
+  logServer("Client connected...\n");
+
+  while ((bytes_read = recv(client_fd, buffer, sizeof(buffer) - 1, 0)) > 0 ){
+    buffer[bytes_read] = '\0';
+    sprintf(format_buffer, "Received Data: %s", buffer);
+    logServer(format_buffer);
+  }
+
+  logServer("Client disconnected...\n");
+
+  // Remove client from the list
+  pthread_mutex_lock(&client_lock);
+  for (int i = 0; i < MAX_CLIENT; i++)
+  {
+    if (client_socket[i] == client_fd)
+    {
+      client_socket[i] = 0;
+      break;
+    }
+  }
+
+  client_count--;
+  pthread_mutex_unlock(&client_lock);
+  close(client_fd);
+
+  return NULL;
+
+}
+
 int main() {
   const char* ip_address = "127.0.0.1";
   int socket_fd, new_socket;
-  char buffer[1024];
-  char format_buffer[2048];
   struct sockaddr_in server_address;
   socklen_t server_address_len = sizeof(server_address);
   pthread_t threads_id;
-  int client_count = 0;
   int result;
 
-  ssize_t bytes_read;
+  // char buffer[1024];
+  // char format_buffer[2048];
+  // ssize_t bytes_read;
 
   openLogFileTS();
   // First step create a socket
@@ -74,6 +110,7 @@ int main() {
   // Accepting the clients
   logServer("Server started, listening for connections...\n");
 
+  // While loop to make new Threads
   while ((new_socket = accept(socket_fd, (struct sockaddr*)&server_address, &server_address_len)) >= 0)
   {
     pthread_mutex_lock(&client_lock);
@@ -93,29 +130,31 @@ int main() {
     else
     {
       printf("Max client reached, rejection new connection\n");
+      logError("Max client reached, rejection new connection\n");
       close(new_socket);
     }
   }
   
-  if (client_fd < 0) {
-    logError("Accept Error");
-    close(socket_fd);
-    exit(EXIT_FAILURE);
-  }
+  // if (client_fd < 0) {
+  //   logError("Accept Error");
+  //   close(socket_fd);
+  //   exit(EXIT_FAILURE);
+  // }
+  //
+  // logServer("Connection established...\n");
+  //
+  // while ((bytes_read = recv(client_fd, buffer, sizeof(buffer) - 1, 0)) > 0 ){
+  //   buffer[bytes_read] = '\0';
+  //   sprintf(format_buffer, "Received Data: %s", buffer);
+  //   logServer(format_buffer);
+  // }
+  //
+  // sprintf(format_buffer, "Socket bound to %s: %d\n", ip_address, PORT);
+  // logServer(format_buffer);
+  // close(socket_fd);
+  // close(client_fd);
 
-  logServer("Connection established...\n");
-
-  while ((bytes_read = recv(client_fd, buffer, sizeof(buffer) - 1, 0)) > 0 ){
-    buffer[bytes_read] = '\0';
-    sprintf(format_buffer, "Received Data: %s", buffer);
-    logServer(format_buffer);
-  }
-
-  sprintf(format_buffer, "Socket bound to %s: %d\n", ip_address, PORT);
-  logServer(format_buffer);
   close(socket_fd);
-  close(client_fd);
-
   closeLogFile();
   return 0;
 }
