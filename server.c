@@ -11,19 +11,34 @@
 #include <time.h>
 #include <fcntl.h>
 #include "logs.h"
+#include <pthread.h>
+
+#define MAX_CLIENT 10
+#define PORT 8080
+
+int client_socket[MAX_CLIENT] = {0};
+pthread_mutex_t client_lock = PTHREAD_MUTEX_INITIALIZER;
+
+typedef struct
+{
+  int client_fd;
+  int *client_count;
+  int *client_sockets;
+  pthread_mutex_t *client_lock;
+} client_info_t;
 
 int main() {
   const char* ip_address = "127.0.0.1";
-  int port = 8080;
-  int socket_fd;
-  int client_fd;
+  int socket_fd, new_socket;
   char buffer[1024];
   char format_buffer[2048];
   struct sockaddr_in server_address;
-  struct sockaddr_storage client_address;
-  socklen_t client_address_len = sizeof(client_address);
-  ssize_t bytes_read;
+  socklen_t server_address_len = sizeof(server_address);
+  pthread_t threads_id;
+  int client_count = 0;
   int result;
+
+  ssize_t bytes_read;
 
   openLogFileTS();
   // First step create a socket
@@ -37,7 +52,7 @@ int main() {
   memset(&server_address, 0, sizeof(server_address)); // Set's everything in the struct to 0
   server_address.sin_family = AF_INET;
   server_address.sin_addr.s_addr = inet_addr(ip_address);
-  server_address.sin_port = htons(port);
+  server_address.sin_port = htons(PORT);
 
   // Binding to IP address
   result = bind(socket_fd, (struct sockaddr*)&server_address, sizeof(server_address));
@@ -48,7 +63,7 @@ int main() {
     exit(EXIT_FAILURE);
   }
 
-  result = listen(socket_fd, 5);
+  result = listen(socket_fd, MAX_CLIENT);
 
   if (result == -1) {
     logError("Listen");
@@ -56,8 +71,31 @@ int main() {
     exit(EXIT_FAILURE);
   }
 
-  logServer("Wait for connection...\n");
-  client_fd = accept(socket_fd, (struct sockaddr*)&client_address, &client_address_len);
+  // Accepting the clients
+  logServer("Server started, listening for connections...\n");
+
+  while ((new_socket = accept(socket_fd, (struct sockaddr*)&server_address, &server_address_len)) >= 0)
+  {
+    pthread_mutex_lock(&client_lock);
+    if (client_count < MAX_CLIENT)
+    {
+      client_socket[client_count++] = new_socket;
+      printf("New Client connected, total clients: %d\n", client_count);
+
+      // Create a thread to handle each client
+      if (pthread_create(&threads_id, NULL, handle_client, (void *)&new_socket) != 0)
+      {
+        perror("Thread Creation Failed");
+        logError("Thread Creation Failed");
+        close(new_socket);
+      }
+    }
+    else
+    {
+      printf("Max client reached, rejection new connection\n");
+      close(new_socket);
+    }
+  }
   
   if (client_fd < 0) {
     logError("Accept Error");
@@ -73,7 +111,7 @@ int main() {
     logServer(format_buffer);
   }
 
-  sprintf(format_buffer, "Socket bound to %s: %d\n", ip_address, port);
+  sprintf(format_buffer, "Socket bound to %s: %d\n", ip_address, PORT);
   logServer(format_buffer);
   close(socket_fd);
   close(client_fd);
