@@ -1,1 +1,1 @@
-gcc server.c logs.c -o main
+gcc server.c logs.c flags.c -o main
