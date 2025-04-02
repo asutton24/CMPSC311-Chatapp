@@ -126,6 +126,10 @@ int main() {
         logError("Thread Creation Failed");
         close(new_socket);
       }
+      else
+      {
+        pthread_detach(threads_id);
+      }
     }
     else
     {
@@ -133,6 +137,8 @@ int main() {
       logError("Max client reached, rejection new connection\n");
       close(new_socket);
     }
+    // Unlock the client to everyone before they connect
+    pthread_mutex_unlock(&client_lock);
   }
   
   // if (client_fd < 0) {
