@@ -11,6 +11,7 @@
 #include <time.h>
 #include <fcntl.h>
 #include "logs.h"
+#include "flags.h"
 #include <pthread.h>
 
 #define MAX_CLIENT 10
@@ -64,19 +65,19 @@ void *handle_client(void* arg)
 
 }
 
-int main() {
+int main(int argc, char** argv) {
   const char* ip_address = "127.0.0.1";
   int socket_fd, new_socket;
   struct sockaddr_in server_address;
   socklen_t server_address_len = sizeof(server_address);
   pthread_t threads_id;
   int result;
-
   // char buffer[1024];
-  // char format_buffer[2048];
+  char format_buffer[2048];
+  // This buffer is used for formatted logs, i.e. "Port number: %d\n"
   // ssize_t bytes_read;
-
   openLogFileTS();
+  handleFlags(argc, argv);
   // First step create a socket
   socket_fd = socket(AF_INET, SOCK_STREAM, 0);
   if (socket_fd < 0) {
