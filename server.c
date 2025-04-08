@@ -17,6 +17,12 @@
 #define MAX_CLIENT 10
 #define PORT 8080
 
+typedef struct
+{
+  int client_fd;
+  char name[32];
+} user_t;
+
 int client_socket[MAX_CLIENT] = {0};
 pthread_mutex_t client_lock = PTHREAD_MUTEX_INITIALIZER;
 int client_count = 0;
@@ -29,16 +35,50 @@ typedef struct
   pthread_mutex_t *client_lock;
 } client_info_t;
 
+int messageFromSender(user_t* user, char* buffer){
+  int bufflen = strlen(buffer) + strlen(user.name) + 6 + 5 * (strlen(user.name) == 0);
+  if (bufflen > 1023) return -1;
+  for (int i = strlen(buffer) - 1; i >= 0; i++){
+    buffer[i + bufflen - strlen(buffer)] = buffer[i];
+  }
+  strcpy(buffer, "\x02USER");
+  if (strlen(user.name) == 0){
+     strcpy(buffer + 5, "guest");
+     buffer[10] = 2;
+  } else {
+    strcpy(buffer + 5, user.name);
+    buffer[5 + strlen(user.name)] = 2;
+  }
+  for (int i = 0; i < MAX_CLIENT; i++){
+    if (client_socket[i] != user.client_fd && client_socket[i] != 0) send(client_socket[i], buffer, bufflen, 0);
+  }
+  return 0;
+}
+
+int decodeMessage(user_t* user, char* buffer){
+  if (buffer[0] == 2){
+    if (strncmp(buffer + 1, "NAME", 4) == 0){
+      if (strlen(buffer + 5) > 31){
+        return -1;
+      }
+      strcpy(user.name, buffer + 5);
+    }
+    return 0;
+  }
+  return messageFromSender(user, buffer);
+}
+
 void *handle_client(void* arg)
 {
-  int client_fd = *(int *)arg;
+  user_t user;
+  user.client_fd = *(int *)arg;
   char buffer[1024];
   char format_buffer[2048];
   ssize_t bytes_read;
 
   logServer("Client connected...\n");
 
-  while ((bytes_read = recv(client_fd, buffer, sizeof(buffer) - 1, 0)) > 0 ){
+  while ((bytes_read = recv(user.client_fd, buffer, sizeof(buffer) - 1, 0)) > 0 ){
     buffer[bytes_read] = '\0';
     sprintf(format_buffer, "Received Data: %s", buffer);
     logServer(format_buffer);
@@ -50,7 +90,7 @@ void *handle_client(void* arg)
   pthread_mutex_lock(&client_lock);
   for (int i = 0; i < MAX_CLIENT; i++)
   {
-    if (client_socket[i] == client_fd)
+    if (client_socket[i] == user.client_fd)
     {
       client_socket[i] = 0;
       break;
@@ -59,7 +99,7 @@ void *handle_client(void* arg)
 
   client_count--;
   pthread_mutex_unlock(&client_lock);
-  close(client_fd);
+  close(user.client_fd);
 
   return NULL;
 
