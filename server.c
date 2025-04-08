@@ -42,6 +42,15 @@ void *handle_client(void* arg)
     buffer[bytes_read] = '\0';
     sprintf(format_buffer, "Received Data: %s", buffer);
     logServer(format_buffer);
+
+    pthread_mutex_lock(&client_lock);
+    for (int i = 0; i < MAX_CLIENT; i++) {
+      if (client_socket[i] != 0 && client_socket[i] != client_fd) {
+        send(client_socket[i], buffer, bytes_read, 0);
+       }
+    }
+
+    pthread_mutex_unlock(&client_lock);
   }
 
   logServer("Client disconnected...\n");
