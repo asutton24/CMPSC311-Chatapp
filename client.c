@@ -9,6 +9,8 @@
 #define SERVER_PORT 8080 // Server's port
 #define BUFFER_SIZE 1024
 
+
+// Function that would receive the message from the server
 void *recv_messages(void *arg)
 {
     int client_fd = *((int *)arg);
@@ -18,7 +20,7 @@ void *recv_messages(void *arg)
     while ((valRead = recv(client_fd, buffer, BUFFER_SIZE - 1, 0)) > 0 )
     {
         buffer[valRead] = '\0';
-        printf("\nServer said: %s", buffer);
+        printf("\nMessage said: %s", buffer);
     }
 
     if (valRead <= 0)
@@ -66,6 +68,8 @@ int main() {
     }
 
     printf("Connected to the server\n");
+
+    // Created a thread that would be waiting for any message being received
     pthread_t recv_thread;
     if (pthread_create(&recv_thread, NULL, recv_messages, &client_fd) != 0)
     {
