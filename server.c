@@ -36,21 +36,23 @@ typedef struct
 } client_info_t;
 
 int messageFromSender(user_t* user, char* buffer){
-  int bufflen = strlen(buffer) + strlen(user.name) + 6 + 5 * (strlen(user.name) == 0);
+  int bufflen = strlen(buffer) + strlen(user->name) + 6 + 5 * (strlen(user->name) == 0);
   if (bufflen > 1023) return -1;
-  for (int i = strlen(buffer) - 1; i >= 0; i++){
+  for (int i = strlen(buffer) - 1; i >= 0; i--){
     buffer[i + bufflen - strlen(buffer)] = buffer[i];
   }
   strcpy(buffer, "\x02USER");
-  if (strlen(user.name) == 0){
+  if (strlen(user->name) == 0){
      strcpy(buffer + 5, "guest");
      buffer[10] = 2;
+     logUser(buffer + 11, "guest");
   } else {
-    strcpy(buffer + 5, user.name);
-    buffer[5 + strlen(user.name)] = 2;
+    strcpy(buffer + 5, user->name);
+    buffer[5 + strlen(user->name)] = 2;
+    logUser(6 + strlen(user->name) + buffer, user->name);
   }
   for (int i = 0; i < MAX_CLIENT; i++){
-    if (client_socket[i] != user.client_fd && client_socket[i] != 0) send(client_socket[i], buffer, bufflen, 0);
+    if (client_socket[i] != user->client_fd && client_socket[i] != 0) send(client_socket[i], buffer, bufflen, 0);
   }
   return 0;
 }
@@ -61,7 +63,7 @@ int decodeMessage(user_t* user, char* buffer){
       if (strlen(buffer + 5) > 31){
         return -1;
       }
-      strcpy(user.name, buffer + 5);
+      strcpy(user->name, buffer + 5);
     }
     return 0;
   }
@@ -82,6 +84,7 @@ void *handle_client(void* arg)
     buffer[bytes_read] = '\0';
     sprintf(format_buffer, "Received Data: %s", buffer);
     logServer(format_buffer);
+    decodeMessage(&user, buffer);
   }
 
   logServer("Client disconnected...\n");

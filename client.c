@@ -42,7 +42,7 @@ int main() {
     }
 
     printf("Connected to the server\n");
-
+    send(client_fd, "\x02NAMEandrew", 11, 0);
     // Read and send data to the server
     while (1) {
 
