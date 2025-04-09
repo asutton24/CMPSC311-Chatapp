@@ -11,21 +11,84 @@
 #include <time.h>
 #include <fcntl.h>
 #include "logs.h"
+#include "flags.h"
+#include <pthread.h>
 
-int main() {
-  const char* ip_address = "127.0.0.1";
-  int port = 8080;
-  int socket_fd;
+#define MAX_CLIENT 10 // Max number of clients that can connect to the server
+#define PORT 8080 // Port number being accessed
+
+int client_socket[MAX_CLIENT] = {0}; // Array to store all the clients
+pthread_mutex_t client_lock = PTHREAD_MUTEX_INITIALIZER; // Protect client_socket being accessed at the same time
+int client_count = 0; // Current number of clients
+
+typedef struct
+{
   int client_fd;
+  int *client_count;
+  int *client_sockets;
+  pthread_mutex_t *client_lock;
+} client_info_t;
+
+// This function would be runned every time a new thread is created
+void *handle_client(void* arg)
+{
+  int client_fd = *(int *)arg;
   char buffer[1024];
   char format_buffer[2048];
-  struct sockaddr_in server_address;
-  struct sockaddr_storage client_address;
-  socklen_t client_address_len = sizeof(client_address);
   ssize_t bytes_read;
+
+  logServer("Client connected...\n");
+
+  // Recieve message from the client until they disconnect
+  while ((bytes_read = recv(client_fd, buffer, sizeof(buffer) - 1, 0)) > 0 ){
+    buffer[bytes_read] = '\0';
+    sprintf(format_buffer, "Received Data: %s", buffer);
+    logServer(format_buffer);
+
+    // Check who sent the message, and then send the message to everyone expect who sent the message.
+    pthread_mutex_lock(&client_lock);
+    for (int i = 0; i < MAX_CLIENT; i++) {
+      if (client_socket[i] != 0 && client_socket[i] != client_fd) {
+        send(client_socket[i], buffer, bytes_read, 0); // Send to all clients
+       }
+    }
+
+    pthread_mutex_unlock(&client_lock);
+  }
+
+  logServer("Client disconnected...\n");
+
+  // Remove client from the list
+  pthread_mutex_lock(&client_lock);
+  for (int i = 0; i < MAX_CLIENT; i++)
+  {
+    if (client_socket[i] == client_fd)
+    {
+      client_socket[i] = 0;
+      break;
+    }
+  }
+
+  client_count--;
+  pthread_mutex_unlock(&client_lock);
+  close(client_fd);
+
+  return NULL;
+
+}
+
+int main(int argc, char** argv) {
+  const char* ip_address = "127.0.0.1";
+  int socket_fd, new_socket;
+  struct sockaddr_in server_address;
+  socklen_t server_address_len = sizeof(server_address);
+  pthread_t threads_id;
   int result;
+  char format_buffer[2048];
 
   openLogFileTS();
+  handleFlags(argc, argv);
+
   // First step create a socket
   socket_fd = socket(AF_INET, SOCK_STREAM, 0);
   if (socket_fd < 0) {
@@ -41,43 +104,74 @@ int main() {
 
   // Binding to IP address
   result = bind(socket_fd, (struct sockaddr*)&server_address, sizeof(server_address));
-
   if (result < 0) {
     logError("Bind error");
     close(socket_fd);
     exit(EXIT_FAILURE);
   }
 
-  result = listen(socket_fd, 5);
-
+  // Listen for any connections
+  result = listen(socket_fd, MAX_CLIENT);
   if (result == -1) {
     logError("Listen");
     close(socket_fd);
     exit(EXIT_FAILURE);
   }
 
-  logServer("Wait for connection...\n");
-  client_fd = accept(socket_fd, (struct sockaddr*)&client_address, &client_address_len);
+  // Accepting the clients
+  logServer("Server started, listening for connections...\n");
+
+  // While loop to make new Threads
+  while ((new_socket = accept(socket_fd, (struct sockaddr*)&server_address, &server_address_len)) >= 0)
+  {
+    pthread_mutex_lock(&client_lock);
+    if (client_count < MAX_CLIENT)
+    {
+      client_socket[client_count++] = new_socket;
+      printf("New Client connected, total clients: %d\n", client_count);
+
+      // Create a thread to handle each client
+      if (pthread_create(&threads_id, NULL, handle_client, (void *)&new_socket) != 0)
+      {
+        perror("Thread Creation Failed");
+        logError("Thread Creation Failed");
+        close(new_socket);
+      }
+      else
+      {
+        pthread_detach(threads_id);
+      }
+    }
+    else
+    {
+      printf("Max client reached, rejection new connection\n");
+      logError("Max client reached, rejection new connection\n");
+      close(new_socket);
+    }
+    // Unlock the client to everyone before they connect
+    pthread_mutex_unlock(&client_lock);
+  }
   
-  if (client_fd < 0) {
-    logError("Accept Error");
-    close(socket_fd);
-    exit(EXIT_FAILURE);
-  }
+  // if (client_fd < 0) {
+  //   logError("Accept Error");
+  //   close(socket_fd);
+  //   exit(EXIT_FAILURE);
+  // }
+  //
+  // logServer("Connection established...\n");
+  //
+  // while ((bytes_read = recv(client_fd, buffer, sizeof(buffer) - 1, 0)) > 0 ){
+  //   buffer[bytes_read] = '\0';
+  //   sprintf(format_buffer, "Received Data: %s", buffer);
+  //   logServer(format_buffer);
+  // }
+  //
+  // sprintf(format_buffer, "Socket bound to %s: %d\n", ip_address, PORT);
+  // logServer(format_buffer);
+  // close(socket_fd);
+  // close(client_fd);
 
-  logServer("Connection established...\n");
-
-  while ((bytes_read = recv(client_fd, buffer, sizeof(buffer) - 1, 0)) > 0 ){
-    buffer[bytes_read] = '\0';
-    sprintf(format_buffer, "Received Data: %s", buffer);
-    logServer(format_buffer);
-  }
-
-  sprintf(format_buffer, "Socket bound to %s: %d\n", ip_address, port);
-  logServer(format_buffer);
   close(socket_fd);
-  close(client_fd);
-
   closeLogFile();
   return 0;
 }
