@@ -36,7 +36,7 @@ int main() {
   // Create the address struct
   memset(&server_address, 0, sizeof(server_address)); // Set's everything in the struct to 0
   server_address.sin_family = AF_INET;
-  server_address.sin_addr.s_addr = inet_addr(ip_address);
+  server_address.sin_addr.s_addr = INADDR_ANY;
   server_address.sin_port = htons(port);
 
   // Binding to IP address
