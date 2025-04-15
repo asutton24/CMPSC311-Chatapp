@@ -1,0 +1,112 @@
+package com.jetbrains;
+
+import javax.swing.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.WindowEvent;
+import java.io.*;
+import java.net.*;
+
+public class ClientGUI extends JFrame {
+    private Socket socket;
+    private volatile boolean connected;
+    private BufferedReader input;
+    private PrintWriter output;
+
+    // GUI components
+    private JTextArea msgArea;
+    private JTextField msgInput;
+    private JButton sendButton;
+    private JTextField IPin;
+    private JTextField username;
+    private JButton disconnectButton;
+    public JPanel MainPanel;
+
+    public ClientGUI() {
+        sendButton.addActionListener((ActionEvent e) -> sendMessage());
+        disconnectButton.addActionListener((ActionEvent e) -> disconnect());
+    }
+
+    private void sendMessage() {
+        String msg = msgInput.getText().trim();
+        if (!msg.isEmpty() && connected) {
+            output.println(msg);
+            appendMessage("Me: " + msg);
+            msgInput.setText("");
+        }
+    }
+
+    private void appendMessage(String msg) {
+        SwingUtilities.invokeLater(() -> msgArea.append("\n" + msg));
+    }
+
+    private void connectToServer(String ip, int port) {
+        while (true) {
+            try {
+                socket = new Socket();
+                socket.connect(new InetSocketAddress(ip, port), 5000);
+                connected = true;
+
+                output = new PrintWriter(socket.getOutputStream(), true);
+                input = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+
+                // Send username as first message
+                String name = username.getText().trim();
+                if (name.isEmpty()) name = "Anonymous";
+                output.println(name);
+
+                appendMessage("Connected to server.");
+                break;
+
+            } catch (IOException ex) {
+                appendMessage("Connection failed. Retrying in 10 seconds...");
+                try {
+                    Thread.sleep(10000);
+                } catch (InterruptedException ignored) {
+                    return;
+                }
+            }
+        }
+    }
+
+    private void listenToServer() {
+        new Thread(() -> {
+            try {
+                String msg;
+                while (connected && (msg = input.readLine()) != null) {
+                    appendMessage(msg);
+                }
+            } catch (IOException e) {
+                appendMessage("Disconnected from server.");
+            } finally {
+                disconnect();
+            }
+        }).start();
+    }
+
+    private void disconnect() {
+        connected = false;
+        try {
+            if (socket != null && !socket.isClosed()) socket.close();
+        } catch (IOException ignored) {}
+        dispatchEvent(new WindowEvent(this, WindowEvent.WINDOW_CLOSING));
+    }
+
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(() -> {
+            ClientGUI frame = new ClientGUI();
+            frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+            frame.setTitle("Chat Client");
+            frame.setContentPane(frame.MainPanel);
+            frame.pack();
+            frame.setVisible(true);
+
+            new Thread(() -> {
+                final String serverIP = "192.168.1.70";
+                final int port = 8080;
+
+                frame.connectToServer(serverIP, port);
+                frame.listenToServer();
+            }).start();
+        });
+    }
+}
