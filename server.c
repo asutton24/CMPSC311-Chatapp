@@ -17,6 +17,12 @@
 #define MAX_CLIENT 10 // Max number of clients that can connect to the server
 #define PORT 8080 // Port number being accessed
 
+typedef struct
+{
+  int client_fd;
+  char name[32];
+} user_t;
+
 int client_socket[MAX_CLIENT] = {0}; // Array to store all the clients
 pthread_mutex_t client_lock = PTHREAD_MUTEX_INITIALIZER; // Protect client_socket being accessed at the same time
 int client_count = 0; // Current number of clients
@@ -29,22 +35,59 @@ typedef struct
   pthread_mutex_t *client_lock;
 } client_info_t;
 
+
+int messageFromSender(user_t* user, char* buffer){
+  int bufflen = strlen(buffer) + strlen(user->name) + 6 + 5 * (strlen(user->name) == 0);
+  if (bufflen > 1023) return -1;
+  for (int i = strlen(buffer) - 1; i >= 0; i--){
+    buffer[i + bufflen - strlen(buffer)] = buffer[i];
+  }
+  strcpy(buffer, "\x02USER");
+  if (strlen(user->name) == 0){
+     strcpy(buffer + 5, "guest");
+     buffer[10] = 2;
+     logUser(buffer + 11, "guest");
+  } else {
+    strcpy(buffer + 5, user->name);
+    buffer[5 + strlen(user->name)] = 2;
+    logUser(6 + strlen(user->name) + buffer, user->name);
+  }
+  for (int i = 0; i < MAX_CLIENT; i++){
+    if (client_socket[i] != user->client_fd && client_socket[i] != 0) send(client_socket[i], buffer, bufflen, 0);
+  }
+  return 0;
+}
+
+int decodeMessage(user_t* user, char* buffer){
+  if (buffer[0] == 2){
+    if (strncmp(buffer + 1, "NAME", 4) == 0){
+      if (strlen(buffer + 5) > 31){
+        return -1;
+      }
+      strcpy(user->name, buffer + 5);
+    }
+    return 0;
+  }
+  return messageFromSender(user, buffer);
+}
 // This function would be runned every time a new thread is created
 void *handle_client(void* arg)
 {
-  int client_fd = *(int *)arg;
+  user_t user;
+  user.client_fd = *(int *)arg;
   char buffer[1024];
   char format_buffer[2048];
   ssize_t bytes_read;
 
   logServer("Client connected...\n");
 
+
   // Recieve message from the client until they disconnect
   while ((bytes_read = recv(client_fd, buffer, sizeof(buffer) - 1, 0)) > 0 ){
     buffer[bytes_read] = '\0';
     sprintf(format_buffer, "Received Data: %s", buffer);
     logServer(format_buffer);
-
+    decodeMessage(&user, buffer);
     // Check who sent the message, and then send the message to everyone expect who sent the message.
     pthread_mutex_lock(&client_lock);
     for (int i = 0; i < MAX_CLIENT; i++) {
@@ -62,7 +105,7 @@ void *handle_client(void* arg)
   pthread_mutex_lock(&client_lock);
   for (int i = 0; i < MAX_CLIENT; i++)
   {
-    if (client_socket[i] == client_fd)
+    if (client_socket[i] == user.client_fd)
     {
       client_socket[i] = 0;
       break;
@@ -71,7 +114,7 @@ void *handle_client(void* arg)
 
   client_count--;
   pthread_mutex_unlock(&client_lock);
-  close(client_fd);
+  close(user.client_fd);
 
   return NULL;
 

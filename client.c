@@ -68,6 +68,7 @@ int main() {
     }
 
     printf("Connected to the server\n");
+    send(client_fd, "\x02NAMEandrew", 11, 0);
 
     // Created a thread that would be waiting for any message being received
     pthread_t recv_thread;
@@ -77,7 +78,6 @@ int main() {
         close(client_fd);
         exit(EXIT_FAILURE);
     }
-
     // Read and send data to the server
     while (1) {
 

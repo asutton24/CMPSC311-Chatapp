@@ -67,6 +67,7 @@ int logUser(char* buff, char* user){
 	writeToLog(user);
 	writeToLog(": ");
 	writeToLog(buff);
+	if (buff[strlen(buff) - 1] != '\n') writeToLog("\n");
 	return 0;
 }
 
