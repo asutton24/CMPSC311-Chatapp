@@ -14,8 +14,8 @@
 #include "flags.h"
 #include <pthread.h>
 
-#define MAX_CLIENT 10
-#define PORT 8080
+#define MAX_CLIENT 10 // Max number of clients that can connect to the server
+#define PORT 8080 // Port number being accessed
 
 typedef struct
 {
@@ -23,9 +23,9 @@ typedef struct
   char name[32];
 } user_t;
 
-int client_socket[MAX_CLIENT] = {0};
-pthread_mutex_t client_lock = PTHREAD_MUTEX_INITIALIZER;
-int client_count = 0;
+int client_socket[MAX_CLIENT] = {0}; // Array to store all the clients
+pthread_mutex_t client_lock = PTHREAD_MUTEX_INITIALIZER; // Protect client_socket being accessed at the same time
+int client_count = 0; // Current number of clients
 
 typedef struct
 {
@@ -34,6 +34,7 @@ typedef struct
   int *client_sockets;
   pthread_mutex_t *client_lock;
 } client_info_t;
+
 
 int messageFromSender(user_t* user, char* buffer){
   int bufflen = strlen(buffer) + strlen(user->name) + 6 + 5 * (strlen(user->name) == 0);
@@ -69,7 +70,7 @@ int decodeMessage(user_t* user, char* buffer){
   }
   return messageFromSender(user, buffer);
 }
-
+// This function would be runned every time a new thread is created
 void *handle_client(void* arg)
 {
   user_t user;
@@ -80,11 +81,22 @@ void *handle_client(void* arg)
 
   logServer("Client connected...\n");
 
-  while ((bytes_read = recv(user.client_fd, buffer, sizeof(buffer) - 1, 0)) > 0 ){
+
+  // Recieve message from the client until they disconnect
+  while ((bytes_read = recv(client_fd, buffer, sizeof(buffer) - 1, 0)) > 0 ){
     buffer[bytes_read] = '\0';
     sprintf(format_buffer, "Received Data: %s", buffer);
     logServer(format_buffer);
     decodeMessage(&user, buffer);
+    // Check who sent the message, and then send the message to everyone expect who sent the message.
+    pthread_mutex_lock(&client_lock);
+    for (int i = 0; i < MAX_CLIENT; i++) {
+      if (client_socket[i] != 0 && client_socket[i] != client_fd) {
+        send(client_socket[i], buffer, bytes_read, 0); // Send to all clients
+       }
+    }
+
+    pthread_mutex_unlock(&client_lock);
   }
 
   logServer("Client disconnected...\n");
@@ -115,12 +127,11 @@ int main(int argc, char** argv) {
   socklen_t server_address_len = sizeof(server_address);
   pthread_t threads_id;
   int result;
-  // char buffer[1024];
   char format_buffer[2048];
-  // This buffer is used for formatted logs, i.e. "Port number: %d\n"
-  // ssize_t bytes_read;
+
   openLogFileTS();
   handleFlags(argc, argv);
+
   // First step create a socket
   socket_fd = socket(AF_INET, SOCK_STREAM, 0);
   if (socket_fd < 0) {
@@ -131,20 +142,19 @@ int main(int argc, char** argv) {
   // Create the address struct
   memset(&server_address, 0, sizeof(server_address)); // Set's everything in the struct to 0
   server_address.sin_family = AF_INET;
-  server_address.sin_addr.s_addr = inet_addr(ip_address);
-  server_address.sin_port = htons(PORT);
+  server_address.sin_addr.s_addr = INADDR_ANY;
+  server_address.sin_port = htons(port);
 
   // Binding to IP address
   result = bind(socket_fd, (struct sockaddr*)&server_address, sizeof(server_address));
-
   if (result < 0) {
     logError("Bind error");
     close(socket_fd);
     exit(EXIT_FAILURE);
   }
 
+  // Listen for any connections
   result = listen(socket_fd, MAX_CLIENT);
-
   if (result == -1) {
     logError("Listen");
     close(socket_fd);

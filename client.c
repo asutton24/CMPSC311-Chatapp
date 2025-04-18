@@ -3,10 +3,34 @@
 #include <string.h>
 #include <unistd.h>
 #include <arpa/inet.h>
+#include <pthread.h>
 
 #define SERVER_IP "127.0.0.1" // Server's IP address
 #define SERVER_PORT 8080 // Server's port
 #define BUFFER_SIZE 1024
+
+
+// Function that would receive the message from the server
+void *recv_messages(void *arg)
+{
+    int client_fd = *((int *)arg);
+    char buffer[BUFFER_SIZE];
+    int valRead;
+
+    while ((valRead = recv(client_fd, buffer, BUFFER_SIZE - 1, 0)) > 0 )
+    {
+        buffer[valRead] = '\0';
+        printf("\nMessage said: %s", buffer);
+    }
+
+    if (valRead <= 0)
+    {
+        perror("Connection closed or error receiving data");
+        exit(EXIT_FAILURE);
+    }
+
+    return NULL;
+}
 
 
 int main() {
@@ -14,6 +38,7 @@ int main() {
     struct sockaddr_in server_addr;
     char buffer[BUFFER_SIZE];
     ssize_t bytes_sent;
+    ssize_t bytes_read;
 
     // Create socket
     client_fd = socket(AF_INET, SOCK_STREAM, 0);
@@ -26,6 +51,7 @@ int main() {
     memset(&server_addr, 0, sizeof(server_addr));
     server_addr.sin_family = AF_INET;
     server_addr.sin_port = htons(SERVER_PORT);
+
     // Convert IP address from text to binary form
     if (inet_pton(AF_INET, SERVER_IP, &server_addr.sin_addr) <= 0) {
         perror("Invalid address/Address not supported");
@@ -43,6 +69,15 @@ int main() {
 
     printf("Connected to the server\n");
     send(client_fd, "\x02NAMEandrew", 11, 0);
+
+    // Created a thread that would be waiting for any message being received
+    pthread_t recv_thread;
+    if (pthread_create(&recv_thread, NULL, recv_messages, &client_fd) != 0)
+    {
+        perror("Received a thread creation failed");
+        close(client_fd);
+        exit(EXIT_FAILURE);
+    }
     // Read and send data to the server
     while (1) {
 
