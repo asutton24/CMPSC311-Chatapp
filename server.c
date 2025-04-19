@@ -13,9 +13,11 @@
 #include "logs.h"
 #include "flags.h"
 #include <pthread.h>
+#include <signal.h>
 
 #define MAX_CLIENT 10 // Max number of clients that can connect to the server
 #define PORT 8080 // Port number being accessed
+volatile sig_atomic_t shutting_down = 0;
 
 typedef struct
 {
@@ -72,8 +74,29 @@ int decodeMessage(user_t* user, char* buffer){
   return messageFromSender(user, buffer);
 }
 
+void triggerDummyConnection()
+{
+  int dummy_fd = socket(AF_INET, SOCK_STREAM, 0);
+  if (dummy_fd < 0)
+  {
+    logError("Dummy Socket creation failed");
+    return;
+  }
+
+  struct sockaddr_in dummy_addr;
+  memset(&dummy_addr, 0, sizeof(dummy_addr));
+  dummy_addr.sin_family = AF_INET;
+  dummy_addr.sin_port = htons(PORT);
+  dummy_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+
+  connect(dummy_fd, (struct sockaddr *)&dummy_addr, sizeof(dummy_addr));
+  close(dummy_fd);
+
+}
+
 void shutdownServer(int server_socket_fd)
 {
+  shutting_down = 1;
   logServer("Shutting down server... \n");
 
   pthread_mutex_lock(&client_lock);
@@ -84,6 +107,7 @@ void shutdownServer(int server_socket_fd)
     if (client_socket[i] != 0)
     {
       send(client_socket[i], "Server Shutting down... \n", sizeof("Server Shutting down... \n"), 0);
+      shutdown(client_socket[i], SHUT_RDWR);
       close(client_socket[i]);
       client_socket[i] = 0;
     }
@@ -91,12 +115,13 @@ void shutdownServer(int server_socket_fd)
 
   pthread_mutex_unlock(&client_lock);
 
+  shutdown(server_socket_fd, SHUT_RDWR);
   close(server_socket_fd);
   closeLogFile();
 
   printf("Server Shutdown successfully\n");
   logServer("Server Shutdown successfully\n");
-  close(EXIT_SUCCESS);
+  triggerDummyConnection();
 }
 
 void *commandListener(void* arg)
@@ -135,7 +160,7 @@ void *handle_client(void* arg)
 
 
   // Receive message from the client until they disconnect
-  while ((bytes_read = recv(user.client_fd, buffer, sizeof(buffer) - 1, 0)) > 0 ){
+  while (!shutting_down && (bytes_read = recv(user.client_fd, buffer, sizeof(buffer) - 1, 0)) > 0 ){
     buffer[bytes_read] = '\0';
     sprintf(format_buffer, "Received Data: %s", buffer);
     logServer(format_buffer);
@@ -251,6 +276,8 @@ int main(int argc, char** argv) {
     // Unlock the client to everyone before they connect
     pthread_mutex_unlock(&client_lock);
   }
+
+  pthread_join(command_thread, NULL);
   return 0;
 }
 
