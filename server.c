@@ -36,6 +36,7 @@ typedef struct
 } client_info_t;
 
 
+
 int messageFromSender(user_t* user, char* buffer){
   int bufflen = strlen(buffer) + strlen(user->name) + 6 + 5 * (strlen(user->name) == 0);
   if (bufflen > 1023) return -1;
@@ -70,6 +71,30 @@ int decodeMessage(user_t* user, char* buffer){
   }
   return messageFromSender(user, buffer);
 }
+
+void *commandListener(void* arg)
+{
+  int server_socket_fd;
+  server_socket_fd = *(int *)arg;
+  char terminal[64];
+
+  while (fgets(terminal, sizeof(terminal), stdin))
+  {
+    if (strncmp(terminal, "shutdown", strlen("shutdown")))
+    {
+      logServer("Shutdown command received form the terminal. \n");
+      shutdownServer(server_socket_fd);
+    }
+    else
+    {
+      logError("Unknown Command");
+      printf("Unknown Command: %s\n", terminal);
+    }
+  }
+
+  return NULL;
+}
+
 // This function would be runned every time a new thread is created
 void *handle_client(void* arg)
 {
