@@ -83,7 +83,7 @@ void *handle_client(void* arg)
 
 
   // Recieve message from the client until they disconnect
-  while ((bytes_read = recv(client_fd, buffer, sizeof(buffer) - 1, 0)) > 0 ){
+  while ((bytes_read = recv(user.client_fd, buffer, sizeof(buffer) - 1, 0)) > 0 ){
     buffer[bytes_read] = '\0';
     sprintf(format_buffer, "Received Data: %s", buffer);
     logServer(format_buffer);
@@ -91,7 +91,7 @@ void *handle_client(void* arg)
     // Check who sent the message, and then send the message to everyone expect who sent the message.
     pthread_mutex_lock(&client_lock);
     for (int i = 0; i < MAX_CLIENT; i++) {
-      if (client_socket[i] != 0 && client_socket[i] != client_fd) {
+      if (client_socket[i] != 0 && client_socket[i] != user.client_fd) {
         send(client_socket[i], buffer, bytes_read, 0); // Send to all clients
        }
     }
@@ -121,7 +121,7 @@ void *handle_client(void* arg)
 }
 
 int main(int argc, char** argv) {
-  const char* ip_address = "127.0.0.1";
+  const char* ip_address = "192.168.40.229";
   int socket_fd, new_socket;
   struct sockaddr_in server_address;
   socklen_t server_address_len = sizeof(server_address);
@@ -143,7 +143,7 @@ int main(int argc, char** argv) {
   memset(&server_address, 0, sizeof(server_address)); // Set's everything in the struct to 0
   server_address.sin_family = AF_INET;
   server_address.sin_addr.s_addr = INADDR_ANY;
-  server_address.sin_port = htons(port);
+  server_address.sin_port = htons(PORT);
 
   // Binding to IP address
   result = bind(socket_fd, (struct sockaddr*)&server_address, sizeof(server_address));
@@ -194,25 +194,6 @@ int main(int argc, char** argv) {
     // Unlock the client to everyone before they connect
     pthread_mutex_unlock(&client_lock);
   }
-  
-  // if (client_fd < 0) {
-  //   logError("Accept Error");
-  //   close(socket_fd);
-  //   exit(EXIT_FAILURE);
-  // }
-  //
-  // logServer("Connection established...\n");
-  //
-  // while ((bytes_read = recv(client_fd, buffer, sizeof(buffer) - 1, 0)) > 0 ){
-  //   buffer[bytes_read] = '\0';
-  //   sprintf(format_buffer, "Received Data: %s", buffer);
-  //   logServer(format_buffer);
-  // }
-  //
-  // sprintf(format_buffer, "Socket bound to %s: %d\n", ip_address, PORT);
-  // logServer(format_buffer);
-  // close(socket_fd);
-  // close(client_fd);
 
   close(socket_fd);
   closeLogFile();
