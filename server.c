@@ -72,6 +72,33 @@ int decodeMessage(user_t* user, char* buffer){
   return messageFromSender(user, buffer);
 }
 
+void shutdownServer(int server_socket_fd)
+{
+  logServer("Shutting down server... \n");
+
+  pthread_mutex_lock(&client_lock);
+  for (int i = 0; i < MAX_CLIENT; i++)
+  {
+    // Loop through the connected client informing them that the server is shutting down
+    // Also disconnect the clients from the server
+    if (client_socket[i] != 0)
+    {
+      send(client_socket[i], "Server Shutting down... \n", sizeof("Server Shutting down... \n"), 0);
+      close(client_socket[i]);
+      client_socket[i] = 0;
+    }
+  }
+
+  pthread_mutex_unlock(&client_lock);
+
+  close(server_socket_fd);
+  closeLogFile();
+
+  printf("Server Shutdown successfully\n");
+  logServer("Server Shutdown successfully\n");
+  close(EXIT_SUCCESS);
+}
+
 void *commandListener(void* arg)
 {
   int server_socket_fd;
@@ -80,14 +107,14 @@ void *commandListener(void* arg)
 
   while (fgets(terminal, sizeof(terminal), stdin))
   {
-    if (strncmp(terminal, "shutdown", strlen("shutdown")))
+    if (strncmp(terminal, "shutdown", strlen("shutdown")) == 0)
     {
       logServer("Shutdown command received form the terminal. \n");
       shutdownServer(server_socket_fd);
     }
     else
     {
-      logError("Unknown Command");
+      logError("Unknown Command\n");
       printf("Unknown Command: %s\n", terminal);
     }
   }
@@ -95,7 +122,7 @@ void *commandListener(void* arg)
   return NULL;
 }
 
-// This function would be runned every time a new thread is created
+// This function would be run every time a new thread is created
 void *handle_client(void* arg)
 {
   user_t user;
@@ -107,12 +134,13 @@ void *handle_client(void* arg)
   logServer("Client connected...\n");
 
 
-  // Recieve message from the client until they disconnect
+  // Receive message from the client until they disconnect
   while ((bytes_read = recv(user.client_fd, buffer, sizeof(buffer) - 1, 0)) > 0 ){
     buffer[bytes_read] = '\0';
     sprintf(format_buffer, "Received Data: %s", buffer);
     logServer(format_buffer);
     decodeMessage(&user, buffer);
+
     // Check who sent the message, and then send the message to everyone expect who sent the message.
     pthread_mutex_lock(&client_lock);
     for (int i = 0; i < MAX_CLIENT; i++) {
@@ -163,6 +191,10 @@ int main(int argc, char** argv) {
     logError("Socket Error");
     exit(EXIT_FAILURE);
   }
+
+  // Start the command listener to await any shutdown commands
+  pthread_t command_thread;
+  pthread_create(&command_thread, NULL, commandListener, &socket_fd);
 
   // Create the address struct
   memset(&server_address, 0, sizeof(server_address)); // Set's everything in the struct to 0
@@ -219,9 +251,6 @@ int main(int argc, char** argv) {
     // Unlock the client to everyone before they connect
     pthread_mutex_unlock(&client_lock);
   }
-
-  close(socket_fd);
-  closeLogFile();
   return 0;
 }
 
