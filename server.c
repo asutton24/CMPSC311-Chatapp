@@ -13,9 +13,11 @@
 #include "logs.h"
 #include "flags.h"
 #include <pthread.h>
+#include <signal.h>
 
 #define MAX_CLIENT 10 // Max number of clients that can connect to the server
 #define PORT 8080 // Port number being accessed
+volatile sig_atomic_t shutting_down = 0;
 
 typedef struct
 {
@@ -34,6 +36,7 @@ typedef struct
   int *client_sockets;
   pthread_mutex_t *client_lock;
 } client_info_t;
+
 
 
 int messageFromSender(user_t* user, char* buffer){
@@ -70,7 +73,81 @@ int decodeMessage(user_t* user, char* buffer){
   }
   return messageFromSender(user, buffer);
 }
-// This function would be runned every time a new thread is created
+
+void triggerDummyConnection()
+{
+  int dummy_fd = socket(AF_INET, SOCK_STREAM, 0);
+  if (dummy_fd < 0)
+  {
+    logError("Dummy Socket creation failed");
+    return;
+  }
+
+  struct sockaddr_in dummy_addr;
+  memset(&dummy_addr, 0, sizeof(dummy_addr));
+  dummy_addr.sin_family = AF_INET;
+  dummy_addr.sin_port = htons(PORT);
+  dummy_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+
+  connect(dummy_fd, (struct sockaddr *)&dummy_addr, sizeof(dummy_addr));
+  close(dummy_fd);
+
+}
+
+void shutdownServer(int server_socket_fd)
+{
+  shutting_down = 1;
+  logServer("Shutting down server... \n");
+
+  pthread_mutex_lock(&client_lock);
+  for (int i = 0; i < MAX_CLIENT; i++)
+  {
+    // Loop through the connected client informing them that the server is shutting down
+    // Also disconnect the clients from the server
+    if (client_socket[i] != 0)
+    {
+      send(client_socket[i], "Server Shutting down... \n", sizeof("Server Shutting down... \n"), 0);
+      shutdown(client_socket[i], SHUT_RDWR);
+      close(client_socket[i]);
+      client_socket[i] = 0;
+    }
+  }
+
+  pthread_mutex_unlock(&client_lock);
+
+  shutdown(server_socket_fd, SHUT_RDWR);
+  close(server_socket_fd);
+  closeLogFile();
+
+  printf("Server Shutdown successfully\n");
+  logServer("Server Shutdown successfully\n");
+  triggerDummyConnection();
+}
+
+void *commandListener(void* arg)
+{
+  int server_socket_fd;
+  server_socket_fd = *(int *)arg;
+  char terminal[64];
+
+  while (fgets(terminal, sizeof(terminal), stdin))
+  {
+    if (strncmp(terminal, "shutdown", strlen("shutdown")) == 0)
+    {
+      logServer("Shutdown command received form the terminal. \n");
+      shutdownServer(server_socket_fd);
+    }
+    else
+    {
+      logError("Unknown Command\n");
+      printf("Unknown Command: %s\n", terminal);
+    }
+  }
+
+  return NULL;
+}
+
+// This function would be run every time a new thread is created
 void *handle_client(void* arg)
 {
   user_t user;
@@ -82,16 +159,17 @@ void *handle_client(void* arg)
   logServer("Client connected...\n");
 
 
-  // Recieve message from the client until they disconnect
-  while ((bytes_read = recv(client_fd, buffer, sizeof(buffer) - 1, 0)) > 0 ){
+  // Receive message from the client until they disconnect
+  while (!shutting_down && (bytes_read = recv(user.client_fd, buffer, sizeof(buffer) - 1, 0)) > 0 ){
     buffer[bytes_read] = '\0';
     sprintf(format_buffer, "Received Data: %s", buffer);
     logServer(format_buffer);
     decodeMessage(&user, buffer);
+
     // Check who sent the message, and then send the message to everyone expect who sent the message.
     pthread_mutex_lock(&client_lock);
     for (int i = 0; i < MAX_CLIENT; i++) {
-      if (client_socket[i] != 0 && client_socket[i] != client_fd) {
+      if (client_socket[i] != 0 && client_socket[i] != user.client_fd) {
         send(client_socket[i], buffer, bytes_read, 0); // Send to all clients
        }
     }
@@ -121,7 +199,7 @@ void *handle_client(void* arg)
 }
 
 int main(int argc, char** argv) {
-  const char* ip_address = "127.0.0.1";
+  const char* ip_address = "192.168.40.229";
   int socket_fd, new_socket;
   struct sockaddr_in server_address;
   socklen_t server_address_len = sizeof(server_address);
@@ -139,11 +217,15 @@ int main(int argc, char** argv) {
     exit(EXIT_FAILURE);
   }
 
+  // Start the command listener to await any shutdown commands
+  pthread_t command_thread;
+  pthread_create(&command_thread, NULL, commandListener, &socket_fd);
+
   // Create the address struct
   memset(&server_address, 0, sizeof(server_address)); // Set's everything in the struct to 0
   server_address.sin_family = AF_INET;
   server_address.sin_addr.s_addr = INADDR_ANY;
-  server_address.sin_port = htons(port);
+  server_address.sin_port = htons(PORT);
 
   // Binding to IP address
   result = bind(socket_fd, (struct sockaddr*)&server_address, sizeof(server_address));
@@ -194,28 +276,8 @@ int main(int argc, char** argv) {
     // Unlock the client to everyone before they connect
     pthread_mutex_unlock(&client_lock);
   }
-  
-  // if (client_fd < 0) {
-  //   logError("Accept Error");
-  //   close(socket_fd);
-  //   exit(EXIT_FAILURE);
-  // }
-  //
-  // logServer("Connection established...\n");
-  //
-  // while ((bytes_read = recv(client_fd, buffer, sizeof(buffer) - 1, 0)) > 0 ){
-  //   buffer[bytes_read] = '\0';
-  //   sprintf(format_buffer, "Received Data: %s", buffer);
-  //   logServer(format_buffer);
-  // }
-  //
-  // sprintf(format_buffer, "Socket bound to %s: %d\n", ip_address, PORT);
-  // logServer(format_buffer);
-  // close(socket_fd);
-  // close(client_fd);
 
-  close(socket_fd);
-  closeLogFile();
+  pthread_join(command_thread, NULL);
   return 0;
 }
 
