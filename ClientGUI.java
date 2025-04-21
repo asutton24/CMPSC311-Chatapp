@@ -1,7 +1,11 @@
 import javax.swing.*;
+import java.awt.*;
 import java.awt.event.ActionEvent;
+import java.awt.event.WindowEvent;
 import java.io.*;
 import java.net.*;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 
 public class ClientGUI extends JFrame {
     private Socket socket;
@@ -24,25 +28,42 @@ public class ClientGUI extends JFrame {
     public ClientGUI() {
         // Set up button actions
         sendButton.addActionListener((ActionEvent e) -> sendMessage());
+        msgInput.addActionListener((ActionEvent e) -> sendMessage());
         disconnectButton.addActionListener((ActionEvent e) -> disconnect());
         connectButton.addActionListener((ActionEvent e) -> connectToServer());
 
         disconnectButton.setEnabled(false);
-        sendButton.setEnabled(false);
+//        sendButton.setEnabled(false);
     }
 
-    private void sendUsername() {
-        String usernameCommand = "NAME" + username.getText();
-        byte[] controlByte = { 0x02 };
+    private void sendCommand(String arg) {
+        byte[] payload = arg.getBytes(StandardCharsets.UTF_8);
+        byte[] command = new byte[payload.length + 1];
+        command[0] = 0x02;
+        System.arraycopy(payload, 0, command, 1, payload.length);
 
         try {
-            rawOutput.write(controlByte);
+            rawOutput.write(command);
             rawOutput.flush();
-            output.println(usernameCommand);
 
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    private void isTyping() {
+        boolean isBlank = msgInput.getText().trim().isEmpty();
+
+        if (!isBlank && connected) {
+            String isTypingCommand = "TYPING" + true;
+            System.out.println(isTypingCommand);
+            sendCommand(isTypingCommand);
+        }
+    }
+
+    private void sendUsername() {
+        String usernameCommand = "NAME" + username.getText();
+        sendCommand(usernameCommand);
     }
 
     private void sendMessage() {
@@ -54,9 +75,9 @@ public class ClientGUI extends JFrame {
         }
     }
 
-    private String formatString(String buff){
+    private String formatString(String buff) {
         if (buff.charAt(0) != 2) return "";
-        if (buff.startsWith("USER", 1)){
+        if (buff.startsWith("USER", 1)) {
             return buff.substring(5, buff.substring(1).indexOf(2) + 1) + ": " + buff.substring(buff.substring(1).indexOf(2) + 2);
         }
         return "";
@@ -120,7 +141,6 @@ public class ClientGUI extends JFrame {
         try {
             if (socket != null && !socket.isClosed()) {
                 socket.close();
-                appendMessage("Disconnected from server.");
 
                 sendButton.setEnabled(false);
                 connectButton.setEnabled(true);
@@ -141,6 +161,7 @@ public class ClientGUI extends JFrame {
             frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
             frame.setTitle("Client GUI");
             frame.setContentPane(frame.MainPanel);
+            frame.setMinimumSize(new Dimension(500, 250));
             frame.pack();
             frame.setVisible(true);
 
