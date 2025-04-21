@@ -1,6 +1,5 @@
 import javax.swing.*;
 import java.awt.event.ActionEvent;
-import java.awt.event.WindowEvent;
 import java.io.*;
 import java.net.*;
 
@@ -33,7 +32,7 @@ public class ClientGUI extends JFrame {
     }
 
     private void sendUsername() {
-        String usernameCommand = "NAME:" + username.getText();
+        String usernameCommand = "NAME" + username.getText();
         byte[] controlByte = { 0x02 };
 
         try {
@@ -53,6 +52,14 @@ public class ClientGUI extends JFrame {
             appendMessage("Me: " + msg);
             msgInput.setText("");
         }
+    }
+
+    private String formatString(String buff){
+        if (buff.charAt(0) != 2) return "";
+        if (buff.startsWith("USER", 1)){
+            return buff.substring(5, buff.substring(1).indexOf(2) + 1) + ": " + buff.substring(buff.substring(1).indexOf(2) + 2);
+        }
+        return "";
     }
 
     private void appendMessage(String msg) {
@@ -98,7 +105,7 @@ public class ClientGUI extends JFrame {
                 String msg;
                 while (connected && (msg = input.readLine()) != null) {
                     System.out.println(msg);
-                    appendMessage(msg);
+                    appendMessage(formatString(msg));
                 }
             } catch (IOException e) {
                 appendMessage("Disconnected from server.");

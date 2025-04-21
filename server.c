@@ -41,9 +41,10 @@ typedef struct
 
 int messageFromSender(user_t* user, char* buffer){
   int bufflen = strlen(buffer) + strlen(user->name) + 6 + 5 * (strlen(user->name) == 0);
+  int orglen = strlen(buffer);
   if (bufflen > 1023) return -1;
-  for (int i = strlen(buffer) - 1; i >= 0; i--){
-    buffer[i + bufflen - strlen(buffer)] = buffer[i];
+  for (int i = orglen - 1; i >= 0; i--){
+    buffer[i + bufflen - orglen] = buffer[i];
   }
   strcpy(buffer, "\x02USER");
   if (strlen(user->name) == 0){
@@ -55,9 +56,11 @@ int messageFromSender(user_t* user, char* buffer){
     buffer[5 + strlen(user->name)] = 2;
     logUser(6 + strlen(user->name) + buffer, user->name);
   }
+  pthread_mutex_lock(&client_lock);
   for (int i = 0; i < MAX_CLIENT; i++){
     if (client_socket[i] != user->client_fd && client_socket[i] != 0) send(client_socket[i], buffer, bufflen, 0);
   }
+  pthread_mutex_unlock(&client_lock);
   return 0;
 }
 
@@ -68,6 +71,12 @@ int decodeMessage(user_t* user, char* buffer){
         return -1;
       }
       strcpy(user->name, buffer + 5);
+      for (int i = 0; i < 32; i++){
+        if (user->name[i] == '\n' || user->name[i] == '\r'){
+          user->name[i] = 0;
+          break;
+	}
+      }
     }
     return 0;
   }
@@ -167,14 +176,15 @@ void *handle_client(void* arg)
     decodeMessage(&user, buffer);
 
     // Check who sent the message, and then send the message to everyone expect who sent the message.
-    pthread_mutex_lock(&client_lock);
-    for (int i = 0; i < MAX_CLIENT; i++) {
-      if (client_socket[i] != 0 && client_socket[i] != user.client_fd) {
-        send(client_socket[i], buffer, bytes_read, 0); // Send to all clients
-       }
-    }
+    //pthread_mutex_lock(&client_lock);
+    //for (int i = 0; i < MAX_CLIENT; i++) {
+    //  if (client_socket[i] != 0 && client_socket[i] != user.client_fd) {
+    //    send(client_socket[i], buffer, bytes_read, 0); // Send to all clients
+    //   }
+    //}
 
-    pthread_mutex_unlock(&client_lock);
+    //pthread_mutex_unlock(&client_lock);
+    memset(buffer, 0, sizeof(buffer));
   }
 
   logServer("Client disconnected...\n");
