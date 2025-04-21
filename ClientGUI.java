@@ -51,6 +51,7 @@ public class ClientGUI extends JFrame {
         }
     }
 
+
     private void isTyping() {
         boolean isBlank = msgInput.getText().trim().isEmpty();
 
