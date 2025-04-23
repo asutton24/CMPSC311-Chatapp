@@ -7,10 +7,10 @@ Daniel Vasquez
 Roberto Ramirez Galan
 
 Jeremy Veloso
-    https://github.com/asutton24/CMPSC311-Chatapp/blob/ClientGUI/Server(Jeremy)/2222222222222.JPG?raw=true
 
-Steps to access the Server: 
 
+**Steps to access the Server: 
+**
 
 1. You must have a C compiler like gcc on a terminal or command prompt. Linux is needed to run these; you can use VMware to run it on. 
 
@@ -24,13 +24,13 @@ Steps to access the Server:
 
    
 
-Steps to access the Client GUI on Windows: 
-
+**Steps to access the Client GUI on Windows: 
+**
 1. Download and install Intellij IDEA.
 
 2. In Intellij go to Files, settings, Plugins, search for "Swing” or “UI Designer” and install it. This allows you to create and modify a GUI design. 
 
-https://github.com/asutton24/CMPSC311-Chatapp/blob/ClientGUI/Server(Jeremy)/2222222222222.JPG?raw=true
+![2222222222222](https://github.com/user-attachments/assets/cbb1d4d1-6d09-4dbb-8559-180cf3f19d56)
 
 3. In Intellij, go to File, Open, and select where the downloaded Zip “CMPSC311-Chatapp-main” is. 
 
