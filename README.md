@@ -40,6 +40,8 @@ Steps to access the Client GUI on Windows:
     
     ![image](https://github.com/user-attachments/assets/5f813420-b130-4ca4-920a-9861087f607e)
 
+    ![Image](https://github.com/user-attachments/assets/7b653265-ff86-4f2e-8b33-76d936590036)
+
 
  
 
