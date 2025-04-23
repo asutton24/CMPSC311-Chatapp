@@ -24,22 +24,21 @@ Steps to access the Server:
 
 Steps to access the Client GUI on Windows: 
 
- 
-![111111111111](https://github.com/user-attachments/assets/271fa11d-0d24-44f3-9b12-95d61c3c0528)
+
 
     Download and install Intellij IDEA. 
 
     In Intellij go to Files, settings, Plugins, search for "Swing” or “UI Designer” and install it. This allows you to create and modify a GUI design. 
     
-    ![image](https://github.com/user-attachments/assets/db6faf95-9116-46f0-a56f-ca878b882e2a)
-
+    ![2222222222222](https://github.com/user-attachments/assets/68acb5fe-916a-4654-aec3-98cb15a00eae)
+    
     In Intellij, go to File, Open, and select where the downloaded Zip “CMPSC311-Chatapp-main” is. 
 
     Compile and run ClientGUI.java. 
 
     Once the application opens, type the Ip address and port that the server is at. To find the network to connect the GUI to, type “hostname -I” or “ip addr” on your terminal and locate the Ip address to where your server is running,           typically, on Linux. Since the port is already defined “8080” on the code, we can use that to connect the GUI.
     
-    ![image](https://github.com/user-attachments/assets/5f813420-b130-4ca4-920a-9861087f607e)
+    ![111111111111](https://github.com/user-attachments/assets/3b9130a9-d94f-40fc-b7bc-6b035ac44789)
 
 
 
