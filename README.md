@@ -30,7 +30,7 @@ Steps to access the Client GUI on Windows:
 
     In Intellij go to Files, settings, Plugins, search for "Swing” or “UI Designer” and install it. This allows you to create and modify a GUI design. 
     
-    ![2222222222222](https://github.com/user-attachments/assets/68acb5fe-916a-4654-aec3-98cb15a00eae)
+    https://github.com/asutton24/CMPSC311-Chatapp/blob/ClientGUI/Server(Jeremy)/2222222222222.JPG?raw=true
     
     In Intellij, go to File, Open, and select where the downloaded Zip “CMPSC311-Chatapp-main” is. 
 
