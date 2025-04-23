@@ -7,9 +7,11 @@ Daniel Vasquez
 Roberto Ramirez Galan
 
 Jeremy Veloso
-    https://github.com/asutton24/CMPSC311-Chatapp/blob/ClientGUI/Server(Jeremy)/2222222222222.JPG?raw=true
+    ![111111111111](https://github.com/user-attachments/assets/3b9130a9-d94f-40fc-b7bc-6b035ac44789)
+
 
 Steps to access the Server: 
+
 
  
 
