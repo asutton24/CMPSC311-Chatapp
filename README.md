@@ -9,8 +9,8 @@ Roberto Ramirez Galan
 Jeremy Veloso
 
 
-**Steps to access the Server: 
-**
+Steps to access the Server: 
+
 
 1. You must have a C compiler like gcc on a terminal or command prompt. Linux is needed to run these; you can use VMware to run it on. 
 
@@ -24,8 +24,9 @@ Jeremy Veloso
 
    
 
-**Steps to access the Client GUI on Windows: 
-**
+Steps to access the Client GUI on Windows: 
+
+
 1. Download and install Intellij IDEA.
 
 2. In Intellij go to Files, settings, Plugins, search for "Swing” or “UI Designer” and install it. This allows you to create and modify a GUI design. 
