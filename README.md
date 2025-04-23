@@ -25,6 +25,7 @@ Steps to access the Server:
 Steps to access the Client GUI on Windows: 
 
  
+![111111111111](https://github.com/user-attachments/assets/271fa11d-0d24-44f3-9b12-95d61c3c0528)
 
     Download and install Intellij IDEA. 
 
