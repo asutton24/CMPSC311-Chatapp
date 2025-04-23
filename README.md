@@ -17,7 +17,7 @@ Steps to access the Server:
 
 2. To install the the gcc compiler for C in linux, type in on the terminal “sudo apt update” and “ sudo apt install build-essential”. 
 
-3. Go to our website https://github.com/asutton24/CMPSC311-Chatapp.git or in GitHub Command Prompt type this “gh repo clone asutton24/CMPSC311-Chatapp” and download our ZIP. Unzip the folder on your computer. 
+3. Go to our website https://github.com/asutton24/CMPSC311-Chatapp.git and download our ZIP. Unzip the folder on your computer. 
 
 4. On your Linux terminal, change your directory to where “CMPSC311-Chatapp” is at. 
 
