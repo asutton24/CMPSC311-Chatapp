@@ -8,11 +8,8 @@ Roberto Ramirez Galan
 
 Jeremy Veloso
 
-
-
-
-
-
+<br>
+<br>
 Steps to access the Server: 
 
 
