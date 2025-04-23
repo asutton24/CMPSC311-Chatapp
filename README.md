@@ -7,6 +7,7 @@ Daniel Vasquez
 Roberto Ramirez Galan
 
 Jeremy Veloso
+    https://github.com/asutton24/CMPSC311-Chatapp/blob/ClientGUI/Server(Jeremy)/2222222222222.JPG?raw=true
 
 Steps to access the Server: 
 
@@ -36,7 +37,7 @@ Steps to access the Client GUI on Windows:
 
     Compile and run ClientGUI.java. 
 
-    Once the application opens, type the Ip address and port that the server is at. To find the network to connect the GUI to, type “hostname -I” or “ip addr” on your terminal and locate the Ip address to where your server is running,           typically, on Linux. Since the port is already defined “8080” on the code, we can use that to connect the GUI.
+    Once the application opens, type the Ip address and port that the server is at. To find the network to connect the GUI to, type “hostname -I” or “ip addr” on your terminal and locate the Ip address to where your server is running typically, on Linux. Since the port is already defined “8080” on the code, we can use that to connect the GUI.
     
     ![111111111111](https://github.com/user-attachments/assets/3b9130a9-d94f-40fc-b7bc-6b035ac44789)
 
