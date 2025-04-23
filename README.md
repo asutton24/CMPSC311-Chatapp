@@ -21,7 +21,7 @@ Steps to access the Server:
 
 4. On your Linux terminal, change your directory to where “CMPSC311-Chatapp” is at. 
 
-5. Compile it and run it.
+5. Compile and run it.
 
    
 
