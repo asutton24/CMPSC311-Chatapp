@@ -38,7 +38,7 @@ typedef struct
   pthread_mutex_t *client_lock;
 } client_info_t;
 
-
+void dummy_function(){return;}
 
 int messageFromSender(user_t* user, char* buffer){
   int bufflen = strlen(buffer) + strlen(user->name) + 6 + 5 * (strlen(user->name) == 0);
@@ -158,7 +158,7 @@ void *commandListener(void* arg)
   server_socket_fd = *(int *)arg;
   char terminal[64];
 
-  while (fgets(terminal, sizeof(terminal), stdin))
+  while (!shutting_down && fgets(terminal, sizeof(terminal), stdin))
   {
     if (strncmp(terminal, "shutdown", strlen("shutdown")) == 0)
     {
@@ -236,7 +236,7 @@ int main(int argc, char** argv) {
   pthread_t threads_id;
   int result;
   char format_buffer[2048];
-
+  signal(SIGINT, dummy_function);
   openLogFileTS();
   handleFlags(argc, argv);
   //Zero out the name list
