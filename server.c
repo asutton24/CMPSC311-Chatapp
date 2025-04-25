@@ -26,6 +26,7 @@ typedef struct
 } user_t;
 
 int client_socket[MAX_CLIENT] = {0}; // Array to store all the clients
+char names_list[MAX_CLIENT][32] = {0};
 pthread_mutex_t client_lock = PTHREAD_MUTEX_INITIALIZER; // Protect client_socket being accessed at the same time
 int client_count = 0; // Current number of clients
 
@@ -37,7 +38,7 @@ typedef struct
   pthread_mutex_t *client_lock;
 } client_info_t;
 
-
+void dummy_function(){return;}
 
 int messageFromSender(user_t* user, char* buffer){
   int bufflen = strlen(buffer) + strlen(user->name) + 6 + 5 * (strlen(user->name) == 0);
@@ -65,6 +66,9 @@ int messageFromSender(user_t* user, char* buffer){
 }
 
 int decodeMessage(user_t* user, char* buffer){
+  char return_buffer[400];
+  int client_count = -1;
+  int buffer_index = 7;
   if (buffer[0] == 2){
     if (strncmp(buffer + 1, "NAME", 4) == 0){
       if (strlen(buffer + 5) > 31){
@@ -77,6 +81,21 @@ int decodeMessage(user_t* user, char* buffer){
           break;
 	}
       }
+    } else if (strncmp(buffer + 1, "LIST", 4) == 0){
+      for (int i = 0; i < MAX_CLIENT; i++){
+        if (names_list[i][0] != 0) client_count++;
+      }
+      strcpy("\x02LIST0\x02", return_buffer);
+      return_buffer[5] += client_count;
+      for (int i = 0; i < MAX_CLIENT; i++){
+        if (names_list[i][0] != 0){
+          strcpy(names_list[i], return_buffer + buffer_index);
+          buffer_index += strlen(names_list[i]);
+          return_buffer[buffer_index] = 2;
+          buffer_index++;
+        }
+      }
+      send(user->client_fd, return_buffer, strlen(return_buffer), 0);
     }
     return 0;
   }
@@ -139,11 +158,11 @@ void *commandListener(void* arg)
   server_socket_fd = *(int *)arg;
   char terminal[64];
 
-  while (fgets(terminal, sizeof(terminal), stdin))
+  while (!shutting_down && fgets(terminal, sizeof(terminal), stdin))
   {
     if (strncmp(terminal, "shutdown", strlen("shutdown")) == 0)
     {
-      logServer("Shutdown command received form the terminal. \n");
+      logServer("Shutdown command received form the terminal.\n");
       shutdownServer(server_socket_fd);
     }
     else
@@ -196,6 +215,7 @@ void *handle_client(void* arg)
     if (client_socket[i] == user.client_fd)
     {
       client_socket[i] = 0;
+      memset(names_list[i], 0, 32);
       break;
     }
   }
@@ -216,10 +236,15 @@ int main(int argc, char** argv) {
   pthread_t threads_id;
   int result;
   char format_buffer[2048];
-
+  signal(SIGINT, dummy_function);
   openLogFileTS();
   handleFlags(argc, argv);
-
+  //Zero out the name list
+  for (int i = 0; i < MAX_CLIENT; i++){
+    for (int j = 0; j < 32; j++){
+      names_list[i][j] = 0;
+    }
+  }
   // First step create a socket
   socket_fd = socket(AF_INET, SOCK_STREAM, 0);
   if (socket_fd < 0) {
