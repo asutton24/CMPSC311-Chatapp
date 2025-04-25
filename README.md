@@ -7,3 +7,45 @@ Daniel Vasquez
 Roberto Ramirez Galan
 
 Jeremy Veloso
+
+<br>
+<br>
+Steps to access the Server: 
+
+
+1. You must have a C compiler like gcc on a terminal or command prompt. Linux is needed to run these; you can use VMware to run it on. 
+
+2. To install the the gcc compiler for C in linux, type in on the terminal “sudo apt update” and “ sudo apt install build-essential”. 
+
+3. Go to our website https://github.com/asutton24/CMPSC311-Chatapp.git and download our ZIP. Unzip the folder on your computer. 
+
+4. On your Linux terminal, change your directory to where “CMPSC311-Chatapp” is at. 
+
+5. Compile and run it.
+
+   
+
+Steps to access the Client GUI on Windows: 
+
+
+
+1. In Intellij go to Files, settings, Plugins, search for "Swing” or “UI Designer” and install it. These are very important as it allows you to create, modify and use our GUI design. 
+
+![2222222222222](https://github.com/user-attachments/assets/cbb1d4d1-6d09-4dbb-8559-180cf3f19d56)
+
+2. In Intellij, go to File, Open, and select where the downloaded Zip “CMPSC311-Chatapp-main” is. 
+
+3. Compile and run ClientGUI.java. 
+
+4. Once the application opens, type the Ip address and port that the server is at. To find the network to connect the GUI to, type “hostname -I” or “ip addr” on your terminal and locate the Ip address to where your server is running typically, on Linux. Since the port is already defined “8080” on the code, we can use that to connect the GUI.
+
+
+
+
+ 
+
+ 
+
+ 
+
+  
