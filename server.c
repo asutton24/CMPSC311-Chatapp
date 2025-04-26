@@ -38,8 +38,10 @@ typedef struct
   pthread_mutex_t *client_lock;
 } client_info_t;
 
+//Function called by SIGINT, disables CTRL-C
 void dummy_function(){return;}
 
+//Sends a message with sender data to all users except the user sending
 int messageFromSender(user_t* user, char* buffer){
   int bufflen = strlen(buffer) + strlen(user->name) + 6 + 5 * (strlen(user->name) == 0);
   int orglen = strlen(buffer);
@@ -65,11 +67,13 @@ int messageFromSender(user_t* user, char* buffer){
   return 0;
 }
 
+//Determine whether a client message is a command or a message
 int decodeMessage(user_t* user, char* buffer){
   char return_buffer[400];
   int client_count = -1;
   int buffer_index = 7;
   if (buffer[0] == 2){
+    //Name command, sets the name associated with a client
     if (strncmp(buffer + 1, "NAME", 4) == 0){
       if (strlen(buffer + 5) > 31){
         return -1;
@@ -81,6 +85,7 @@ int decodeMessage(user_t* user, char* buffer){
           break;
 	}
       }
+    //List command, return a list of users to one client
     } else if (strncmp(buffer + 1, "LIST", 4) == 0){
       for (int i = 0; i < MAX_CLIENT; i++){
         if (names_list[i][0] != 0) client_count++;
@@ -99,9 +104,11 @@ int decodeMessage(user_t* user, char* buffer){
     }
     return 0;
   }
+  //If it is not a command broadcast it as a message
   return messageFromSender(user, buffer);
 }
 
+//Used during a graceful shutdown to break the client accepting loop
 void triggerDummyConnection()
 {
   int dummy_fd = socket(AF_INET, SOCK_STREAM, 0);
@@ -152,6 +159,7 @@ void shutdownServer(int server_socket_fd)
   triggerDummyConnection();
 }
 
+//Main shell for getting shutdown commands
 void *commandListener(void* arg)
 {
   int server_socket_fd;
