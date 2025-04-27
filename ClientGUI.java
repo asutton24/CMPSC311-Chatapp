@@ -1,10 +1,8 @@
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
-import java.awt.event.WindowEvent;
 import java.io.*;
 import java.net.*;
-import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 
 public class ClientGUI extends JFrame {
@@ -13,6 +11,7 @@ public class ClientGUI extends JFrame {
     private PrintWriter output;
     private BufferedReader input;
     private volatile boolean connected;
+    public String[] users;
 
     // GUI components
     private JTextArea msgArea;
@@ -24,6 +23,7 @@ public class ClientGUI extends JFrame {
     public JPanel MainPanel;
     private JTextField portIn;
     private JButton connectButton;
+    private JTextArea memberList;
 
     public ClientGUI() {
         // Set up button actions
@@ -33,7 +33,8 @@ public class ClientGUI extends JFrame {
         connectButton.addActionListener((ActionEvent e) -> connectToServer());
 
         disconnectButton.setEnabled(false);
-//        sendButton.setEnabled(false);
+        sendButton.setEnabled(false);
+        users = new String[10];
     }
 
     private void sendCommand(String arg) {
@@ -51,7 +52,6 @@ public class ClientGUI extends JFrame {
         }
     }
 
-
     private void isTyping() {
         boolean isBlank = msgInput.getText().trim().isEmpty();
 
@@ -62,9 +62,45 @@ public class ClientGUI extends JFrame {
         }
     }
 
+    private void requestUserList(){
+        String listCommand = "LIST";
+        sendCommand(listCommand);
+    }
+
     private void sendUsername() {
         String usernameCommand = "NAME" + username.getText();
+        users[0] = username.getText();
         sendCommand(usernameCommand);
+    }
+
+    private void updateMembers() {
+        SwingUtilities.invokeLater(() -> {
+            memberList.setText("");
+            for (String user : users) {
+                memberList.append(user + "\n");
+            }
+        });
+    }
+
+    private void parseServerInput(String buff){
+        int userCount;
+        if (buff.indexOf(2) < 0) return;
+        buff = buff.substring(buff.indexOf(2));
+        if (buff.startsWith("USER", 1)){
+            appendMessage(buff.substring(5, buff.substring(1).indexOf(2) + 1) + ": " + buff.substring(buff.substring(1).indexOf(2) + 2));
+        } else if (buff.startsWith("LIST", 1)){
+            userCount = (int)buff.charAt(5) - 47;
+            buff = buff.substring(7);
+            for (int i = 0; i < userCount; i++){
+                users[i] = buff.substring(0, buff.indexOf(2));
+                buff = buff.substring(buff.indexOf(2) + 1);
+            }
+            for (int i = userCount; i < 10; i++){
+                users[i] = "";
+            }
+            System.out.println(userCount);
+            updateMembers();
+        }
     }
 
     private void sendMessage() {
@@ -74,14 +110,6 @@ public class ClientGUI extends JFrame {
             appendMessage("Me: " + msg);
             msgInput.setText("");
         }
-    }
-
-    private String formatString(String buff) {
-        if (buff.charAt(0) != 2) return "";
-        if (buff.startsWith("USER", 1)) {
-            return buff.substring(5, buff.substring(1).indexOf(2) + 1) + ": " + buff.substring(buff.substring(1).indexOf(2) + 2);
-        }
-        return "";
     }
 
     private void appendMessage(String msg) {
@@ -127,7 +155,7 @@ public class ClientGUI extends JFrame {
                 String msg;
                 while (connected && (msg = input.readLine()) != null) {
                     System.out.println(msg);
-                    appendMessage(formatString(msg));
+                    parseServerInput(msg);
                 }
             } catch (IOException e) {
                 appendMessage("Disconnected from server.");
