@@ -38,8 +38,10 @@ typedef struct
   pthread_mutex_t *client_lock;
 } client_info_t;
 
+//Function called by SIGINT, disables CTRL-C
 void dummy_function(){return;}
 
+//Sends a message with sender data to all users except the user sending
 int messageFromSender(user_t* user, char* buffer){
   int bufflen = strlen(buffer) + strlen(user->name) + 6 + 5 * (strlen(user->name) == 0);
   int orglen = strlen(buffer);
@@ -65,43 +67,69 @@ int messageFromSender(user_t* user, char* buffer){
   return 0;
 }
 
+int constructUserList(char* return_buffer){
+      int client_count = -1;
+      int buffer_index = 7;
+      for (int i = 0; i < MAX_CLIENT; i++){
+        if (client_socket[i] != 0) client_count++;
+      }
+      strcpy(return_buffer, "\x02LIST0\x02");
+      return_buffer[5] += client_count;
+      for (int i = 0; i < MAX_CLIENT; i++){
+        if (names_list[i][0] != 0){
+          strcpy(return_buffer + buffer_index, names_list[i]);
+          buffer_index += strlen(names_list[i]);
+          return_buffer[buffer_index] = 2;
+          buffer_index++;
+        }
+      }
+      return_buffer[buffer_index] = '\n';
+      return 0;
+}
+
+//Determine whether a client message is a command or a message
 int decodeMessage(user_t* user, char* buffer){
   char return_buffer[400];
-  int client_count = -1;
-  int buffer_index = 7;
   if (buffer[0] == 2){
+    //Name command, sets the name associated with a client
     if (strncmp(buffer + 1, "NAME", 4) == 0){
       if (strlen(buffer + 5) > 31){
         return -1;
       }
       strcpy(user->name, buffer + 5);
+      for (int i = 0; i < 10; i++){
+        if (client_socket[i] == user->client_fd){
+          strcpy(names_list[i], buffer + 5);
+          break;
+        }
+      }
       for (int i = 0; i < 32; i++){
         if (user->name[i] == '\n' || user->name[i] == '\r'){
           user->name[i] = 0;
           break;
 	}
       }
+      //update client user lists
+      constructUserList(return_buffer);
+      pthread_mutex_lock(&client_lock);
+      for (int i = 0; i < MAX_CLIENT; i++){
+        if (client_socket[i] != 0) send(client_socket[i], return_buffer, strlen(return_buffer), 0);
+      }
+      pthread_mutex_unlock(&client_lock);
+    //List command, return a list of users to one client
     } else if (strncmp(buffer + 1, "LIST", 4) == 0){
-      for (int i = 0; i < MAX_CLIENT; i++){
-        if (names_list[i][0] != 0) client_count++;
-      }
-      strcpy("\x02LIST0\x02", return_buffer);
-      return_buffer[5] += client_count;
-      for (int i = 0; i < MAX_CLIENT; i++){
-        if (names_list[i][0] != 0){
-          strcpy(names_list[i], return_buffer + buffer_index);
-          buffer_index += strlen(names_list[i]);
-          return_buffer[buffer_index] = 2;
-          buffer_index++;
-        }
-      }
+      constructUserList(return_buffer);
+      pthread_mutex_lock(&client_lock);
       send(user->client_fd, return_buffer, strlen(return_buffer), 0);
+      pthread_mutex_unlock(&client_lock);
     }
     return 0;
   }
+  //If it is not a command broadcast it as a message
   return messageFromSender(user, buffer);
 }
 
+//Used during a graceful shutdown to break the client accepting loop
 void triggerDummyConnection()
 {
   int dummy_fd = socket(AF_INET, SOCK_STREAM, 0);
@@ -152,6 +180,7 @@ void shutdownServer(int server_socket_fd)
   triggerDummyConnection();
 }
 
+//Main shell for getting shutdown commands
 void *commandListener(void* arg)
 {
   int server_socket_fd;
@@ -221,6 +250,12 @@ void *handle_client(void* arg)
   }
 
   client_count--;
+  memset(format_buffer, 0, sizeof(format_buffer));
+  constructUserList(format_buffer + 1);
+  format_buffer[0] = '\n';
+  for (int i = 0; i < MAX_CLIENT; i++){
+    if (client_socket[i] != 0) send(client_socket[i], format_buffer, strlen(format_buffer), 0);
+  }
   pthread_mutex_unlock(&client_lock);
   close(user.client_fd);
 

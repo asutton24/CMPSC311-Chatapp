@@ -2,6 +2,7 @@ import javax.swing.*;
 import java.awt.event.ActionEvent;
 import java.io.*;
 import java.net.*;
+import java.nio.charset.StandardCharsets;
 
 public class ClientGUI extends JFrame {
     private Socket socket;
@@ -20,6 +21,7 @@ public class ClientGUI extends JFrame {
     public JPanel MainPanel;
     private JTextField portIn;
     private JButton connectButton;
+    public String[] users;
 
     public ClientGUI() {
         // Set up button actions
@@ -29,16 +31,34 @@ public class ClientGUI extends JFrame {
 
         disconnectButton.setEnabled(false);
         sendButton.setEnabled(false);
+        users = new String[10];
     }
 
     private void sendUsername() {
         String usernameCommand = "NAME" + username.getText();
-        byte[] controlByte = { 0x02 };
-
+        users[0] = username.getText();
+        byte[] user = usernameCommand.getBytes(StandardCharsets.UTF_8);
+        byte[] command = new byte[user.length + 1];
+        command[0] = 2;
+        System.arraycopy(user, 0, command, 1, user.length);
         try {
-            rawOutput.write(controlByte);
+            rawOutput.write(command);
             rawOutput.flush();
-            output.println(usernameCommand);
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void requestUserList(){
+        String listCommand = "LIST";
+        byte[] message = listCommand.getBytes(StandardCharsets.UTF_8);
+        byte[] command = new byte[message.length + 1];
+        command[0] = 2;
+        System.arraycopy(message, 0, command, 1, message.length);
+        try {
+            rawOutput.write(command);
+            rawOutput.flush();
 
         } catch (IOException e) {
             e.printStackTrace();
@@ -54,12 +74,24 @@ public class ClientGUI extends JFrame {
         }
     }
 
-    private String formatString(String buff){
-        if (buff.charAt(0) != 2) return "";
+
+    private void parseServerInput(String buff){
+        int userCount;
+        if (buff.indexOf(2) < 0) return;
+        buff = buff.substring(buff.indexOf(2));
         if (buff.startsWith("USER", 1)){
-            return buff.substring(5, buff.substring(1).indexOf(2) + 1) + ": " + buff.substring(buff.substring(1).indexOf(2) + 2);
+            appendMessage(buff.substring(5, buff.substring(1).indexOf(2) + 1) + ": " + buff.substring(buff.substring(1).indexOf(2) + 2));
+        } else if (buff.startsWith("LIST", 1)){
+            userCount = (int)buff.charAt(5) - 47;
+            buff = buff.substring(7);
+            for (int i = 0; i < userCount; i++){
+                users[i] = buff.substring(0, buff.indexOf(2));
+                buff = buff.substring(buff.indexOf(2) + 1);
+            }
+            for (int i = userCount; i < 10; i++){
+                users[i] = "";
+            }
         }
-        return "";
     }
 
     private void appendMessage(String msg) {
@@ -105,7 +137,7 @@ public class ClientGUI extends JFrame {
                 String msg;
                 while (connected && (msg = input.readLine()) != null) {
                     System.out.println(msg);
-                    appendMessage(formatString(msg));
+                    parseServerInput(msg);
                 }
             } catch (IOException e) {
                 appendMessage("Disconnected from server.");
