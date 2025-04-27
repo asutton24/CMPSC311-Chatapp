@@ -13,7 +13,7 @@ public class ClientGUI extends JFrame {
     private volatile boolean connected;
     public String[] users;
 
-    // GUI components
+    // GUI component
     private JTextArea msgArea;
     private JTextField msgInput;
     private JButton sendButton;
