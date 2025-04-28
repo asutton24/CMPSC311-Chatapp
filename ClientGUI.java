@@ -77,7 +77,7 @@ public class ClientGUI extends JFrame {
         SwingUtilities.invokeLater(() -> {
             memberList.setText("");
             for (String user : users) {
-                memberList.append(user + "\n");
+                if (!user.isEmpty()) {memberList.append(user + "\n");}
             }
         });
     }
