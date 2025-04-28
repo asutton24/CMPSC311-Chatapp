@@ -1,4 +1,5 @@
 import javax.swing.*;
+import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.io.*;
 import java.net.*;
@@ -10,8 +11,9 @@ public class ClientGUI extends JFrame {
     private PrintWriter output;
     private BufferedReader input;
     private volatile boolean connected;
+    public String[] users;
 
-    // GUI components
+    // GUI component
     private JTextArea msgArea;
     private JTextField msgInput;
     private JButton sendButton;
@@ -21,11 +23,12 @@ public class ClientGUI extends JFrame {
     public JPanel MainPanel;
     private JTextField portIn;
     private JButton connectButton;
-    public String[] users;
+    private JTextArea memberList;
 
     public ClientGUI() {
         // Set up button actions
         sendButton.addActionListener((ActionEvent e) -> sendMessage());
+        msgInput.addActionListener((ActionEvent e) -> sendMessage());
         disconnectButton.addActionListener((ActionEvent e) -> disconnect());
         connectButton.addActionListener((ActionEvent e) -> connectToServer());
 
@@ -34,46 +37,50 @@ public class ClientGUI extends JFrame {
         users = new String[10];
     }
 
-    private void sendUsername() {
-        String usernameCommand = "NAME" + username.getText();
-        users[0] = username.getText();
-        byte[] user = usernameCommand.getBytes(StandardCharsets.UTF_8);
-        byte[] command = new byte[user.length + 1];
-        command[0] = 2;
-        System.arraycopy(user, 0, command, 1, user.length);
+    private void sendCommand(String arg) {
+        byte[] payload = arg.getBytes(StandardCharsets.UTF_8);
+        byte[] command = new byte[payload.length + 1];
+        command[0] = 0x02;
+        System.arraycopy(payload, 0, command, 1, payload.length);
+
         try {
             rawOutput.write(command);
             rawOutput.flush();
 
         } catch (IOException e) {
             e.printStackTrace();
+        }
+    }
+
+    private void isTyping() {
+        boolean isBlank = msgInput.getText().trim().isEmpty();
+
+        if (!isBlank && connected) {
+            String isTypingCommand = "TYPING" + true;
+            System.out.println(isTypingCommand);
+            sendCommand(isTypingCommand);
         }
     }
 
     private void requestUserList(){
         String listCommand = "LIST";
-        byte[] message = listCommand.getBytes(StandardCharsets.UTF_8);
-        byte[] command = new byte[message.length + 1];
-        command[0] = 2;
-        System.arraycopy(message, 0, command, 1, message.length);
-        try {
-            rawOutput.write(command);
-            rawOutput.flush();
-
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        sendCommand(listCommand);
     }
 
-    private void sendMessage() {
-        String msg = msgInput.getText().trim();
-        if (!msg.isEmpty() && connected) {
-            output.println(msg);
-            appendMessage("Me: " + msg);
-            msgInput.setText("");
-        }
+    private void sendUsername() {
+        String usernameCommand = "NAME" + username.getText();
+        users[0] = username.getText();
+        sendCommand(usernameCommand);
     }
 
+    private void updateMembers() {
+        SwingUtilities.invokeLater(() -> {
+            memberList.setText("");
+            for (String user : users) {
+                memberList.append(user + "\n");
+            }
+        });
+    }
 
     private void parseServerInput(String buff){
         int userCount;
@@ -91,6 +98,17 @@ public class ClientGUI extends JFrame {
             for (int i = userCount; i < 10; i++){
                 users[i] = "";
             }
+            System.out.println(userCount);
+            updateMembers();
+        }
+    }
+
+    private void sendMessage() {
+        String msg = msgInput.getText().trim();
+        if (!msg.isEmpty() && connected) {
+            output.println(msg);
+            appendMessage("Me: " + msg);
+            msgInput.setText("");
         }
     }
 
@@ -152,7 +170,6 @@ public class ClientGUI extends JFrame {
         try {
             if (socket != null && !socket.isClosed()) {
                 socket.close();
-                appendMessage("Disconnected from server.");
 
                 sendButton.setEnabled(false);
                 connectButton.setEnabled(true);
@@ -173,6 +190,7 @@ public class ClientGUI extends JFrame {
             frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
             frame.setTitle("Client GUI");
             frame.setContentPane(frame.MainPanel);
+            frame.setMinimumSize(new Dimension(500, 250));
             frame.pack();
             frame.setVisible(true);
 
