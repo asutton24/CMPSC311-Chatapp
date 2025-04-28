@@ -321,7 +321,7 @@ int main(int argc, char** argv) {
     {
       client_socket[findLowestSocketIndex()] = new_socket;
       client_count = 0;
-      for (int i = 0; i < MAX_CLIENT; i++) if (client_socket[i] == 0) client_count++;
+      for (int i = 0; i < MAX_CLIENT; i++) if (client_socket[i] != 0) client_count++;
       printf("New Client connected, total clients: %d\n", client_count);
 
       // Create a thread to handle each client
