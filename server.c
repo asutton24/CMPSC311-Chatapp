@@ -26,17 +26,8 @@ typedef struct
 } user_t;
 
 int client_socket[MAX_CLIENT] = {0}; // Array to store all the clients
-char names_list[MAX_CLIENT][32] = {0};
+char names_list[MAX_CLIENT][32] = {0}; // List of names that correspond with the client at the same index
 pthread_mutex_t client_lock = PTHREAD_MUTEX_INITIALIZER; // Protect client_socket being accessed at the same time
-int client_count = 0; // Current number of clients
-
-typedef struct
-{
-  int client_fd;
-  int *client_count;
-  int *client_sockets;
-  pthread_mutex_t *client_lock;
-} client_info_t;
 
 //Function called by SIGINT, disables CTRL-C
 void dummy_function(){return;}
@@ -180,6 +171,13 @@ void shutdownServer(int server_socket_fd)
   triggerDummyConnection();
 }
 
+//Find the lowest available socket index to make sure all sockets are utilized
+int findLowestSocketIndex(){
+  for (int i = 0; i < 10; i++){
+    if (client_socket[i] == 0) return i;
+  }
+  return -1;
+}
 //Main shell for getting shutdown commands
 void *commandListener(void* arg)
 {
@@ -248,8 +246,6 @@ void *handle_client(void* arg)
       break;
     }
   }
-
-  client_count--;
   memset(format_buffer, 0, sizeof(format_buffer));
   constructUserList(format_buffer + 1);
   format_buffer[0] = '\n';
@@ -270,6 +266,7 @@ int main(int argc, char** argv) {
   socklen_t server_address_len = sizeof(server_address);
   pthread_t threads_id;
   int result;
+  int client_count;
   char format_buffer[2048];
   signal(SIGINT, dummy_function);
   openLogFileTS();
@@ -320,9 +317,11 @@ int main(int argc, char** argv) {
   while ((new_socket = accept(socket_fd, (struct sockaddr*)&server_address, &server_address_len)) >= 0)
   {
     pthread_mutex_lock(&client_lock);
-    if (client_count < MAX_CLIENT)
+    if (findLowestSocketIndex() != -1)
     {
-      client_socket[client_count++] = new_socket;
+      client_socket[findLowestSocketIndex()] = new_socket;
+      client_count = 0;
+      for (int i = 0; i < MAX_CLIENT; i++) if (client_socket[i] == 0) client_count++;
       printf("New Client connected, total clients: %d\n", client_count);
 
       // Create a thread to handle each client
