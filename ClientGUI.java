@@ -156,7 +156,7 @@ public class ClientGUI extends JFrame {
                 portIn.setEnabled(false);
                 username.setEnabled(false);
 
-                connected = true; //Setting valotile boolean to true upon connection
+                connected = true; //Setting volatile boolean to true upon connection
                 appendMessage("Connected to server.");
 
                 listenToServer(); //Starting the listen to server function
@@ -209,7 +209,8 @@ public class ClientGUI extends JFrame {
             frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
             frame.setTitle("Client GUI");
             frame.setContentPane(frame.MainPanel);
-            frame.setMinimumSize(new Dimension(500, 250));
+            frame.setMinimumSize(new Dimension(500, 350));
+            frame.setLocationRelativeTo(null);
             frame.pack();
             frame.setVisible(true);
 
