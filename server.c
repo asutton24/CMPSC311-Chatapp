@@ -220,16 +220,6 @@ void *handle_client(void* arg)
     sprintf(format_buffer, "Received Data: %s", buffer);
     logServer(format_buffer);
     decodeMessage(&user, buffer);
-
-    // Check who sent the message, and then send the message to everyone expect who sent the message.
-    //pthread_mutex_lock(&client_lock);
-    //for (int i = 0; i < MAX_CLIENT; i++) {
-    //  if (client_socket[i] != 0 && client_socket[i] != user.client_fd) {
-    //    send(client_socket[i], buffer, bytes_read, 0); // Send to all clients
-    //   }
-    //}
-
-    //pthread_mutex_unlock(&client_lock);
     memset(buffer, 0, sizeof(buffer));
   }
 
