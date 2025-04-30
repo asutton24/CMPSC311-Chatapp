@@ -94,7 +94,7 @@ public class ClientGUI extends JFrame {
         if (buff.indexOf(2) < 0) return;
         buff = buff.substring(buff.indexOf(2));
         if (buff.startsWith("USER", 1)){
-            appendMessage(buff.substring(5, buff.substring(1).indexOf(2) + 1) + ": " + buff.substring(buff.substring(1).indexOf(2) + 2));
+            appendMessage(buff.substring(5, buff.substring(1).indexOf(2) + 1) + ": " + buff.substring(buff.substring(1).indexOf(2) + 2)); // magic bullshit
         } else if (buff.startsWith("LIST", 1)){
             userCount = (int)buff.charAt(5) - 47;
             buff = buff.substring(7);
@@ -152,7 +152,7 @@ public class ClientGUI extends JFrame {
                 portIn.setEnabled(false);
                 username.setEnabled(false);
 
-                connected = true; //Setting valotile boolean to true upon connection
+                connected = true; //Setting volatile boolean to true upon connection
                 appendMessage("Connected to server.");
 
                 listenToServer(); //Starting the listen to server function
@@ -205,7 +205,8 @@ public class ClientGUI extends JFrame {
             frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
             frame.setTitle("Client GUI");
             frame.setContentPane(frame.MainPanel);
-            frame.setMinimumSize(new Dimension(500, 250));
+            frame.setMinimumSize(new Dimension(500, 350));
+            frame.setLocationRelativeTo(null);
             frame.pack();
             frame.setVisible(true);
 
