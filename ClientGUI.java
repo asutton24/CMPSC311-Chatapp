@@ -91,11 +91,15 @@ public class ClientGUI extends JFrame {
 
     private void parseServerInput(String buff){
         int userCount;
+        // If not a command then return
         if (buff.indexOf(2) < 0) return;
+        // Remove leading garbage
         buff = buff.substring(buff.indexOf(2));
         if (buff.startsWith("USER", 1)){
-            appendMessage(buff.substring(5, buff.substring(1).indexOf(2) + 1) + ": " + buff.substring(buff.substring(1).indexOf(2) + 2)); // magic bullshit
+            // USER means that this is a message from a user, this function parses and posts the message
+            appendMessage(buff.substring(5, buff.substring(1).indexOf(2) + 1) + ": " + buff.substring(buff.substring(1).indexOf(2) + 2));
         } else if (buff.startsWith("LIST", 1)){
+            // LIST will parse list of active users and update the user array
             userCount = (int)buff.charAt(5) - 47;
             buff = buff.substring(7);
             for (int i = 0; i < userCount; i++){
